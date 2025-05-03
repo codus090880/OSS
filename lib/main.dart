@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:prunners/screen/home_screen.dart';
+import 'package:prunners/screen/login_screen.dart';
 import 'package:prunners/screen/userpage_screen.dart';
 
 void main() async {
@@ -25,8 +26,9 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black),
         ),
       ),
-      initialRoute: '/home',
+      initialRoute: '/login',
       routes: {
+        '/login': (_) => LoginScreen(),
         '/home': (_) => HomeScreen(),
         //'/running': (_) => RunningScreen(),
         '/profile': (_) => UserPageScreen(),
