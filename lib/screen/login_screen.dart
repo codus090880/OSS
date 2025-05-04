@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:prunners/screen/home_screen.dart';
+import 'package:prunners/screen/signup_screen.dart';
 import 'package:prunners/widget/grey_box.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/button_box.dart';
@@ -32,6 +34,9 @@ class LoginScreen extends StatelessWidget {
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: '아이디를 입력하세요',
+                    hintStyle: TextStyle(
+                      color: Color(0xFF8E8E93), // 회색빛
+                    ),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 17),
                   ),
@@ -42,6 +47,9 @@ class LoginScreen extends StatelessWidget {
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: '비밀번호를 입력하세요',
+                    hintStyle: TextStyle(
+                      color: Color(0xFF8E8E93), // 회색빛
+                    ),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 17),
                   ),
@@ -65,14 +73,23 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 20),
               ButtonBox(
                 text: '로그인',
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => HomeScreen()),
+                  );
+                },
               ),
               const SizedBox(height: 12),
               OutlinedButtonBox(
                 text: '회원가입',
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SignupScreen()),
+                  );
+                },
               ),
-              const SizedBox(height: 20),
             ],
           ),
         ),
