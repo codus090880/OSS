@@ -17,7 +17,7 @@ import 'package:prunners/screen/matching_screen.dart';
 import 'package:prunners/screen/record_screen.dart';
 import 'package:prunners/screen/after_matching.dart';
 import 'package:prunners/screen/chat_screen.dart';
-
+import 'package:prunners/screen/badge_screen.dart';
 
 
 void main() async {
@@ -62,6 +62,7 @@ class MyApp extends StatelessWidget {
         '/after_matching' : (_) => AfterMatching(),
         '/chat' : (_) => ChatScreen(),
         '/user_set' : (_) => ProfileScreen(),
+        '/badge': (_) => BadgeScreen(),
       },
       home: HomeScreen(),
     );

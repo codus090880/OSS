@@ -6,6 +6,7 @@ import 'package:prunners/widget/rounded_shadow_box.dart';
 import 'package:prunners/screen/runningmate.dart';
 import 'package:prunners/screen/setting.dart';
 import 'package:prunners/screen/record_screen.dart';
+import 'package:prunners/screen/badge_screen.dart';
 
 class UserPageScreen extends StatelessWidget {
   @override
@@ -182,7 +183,12 @@ class UserBody extends StatelessWidget {
                         MaterialPageRoute(builder: (_) => RecordScreen()),
                       );
                     }
-                    // TODO: 다른 메뉴 항목은 추후 구현
+                    if (item.label == '나의 뱃지') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => BadgeScreen()),
+                      );
+                    }
                   },
                   child: Container(
                     height: 48,
