@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:prunners/screen/agree_screen.dart';
 import 'package:prunners/screen/alone_screen.dart';
+import 'package:prunners/screen/badge_screen.dart';
 import 'package:prunners/screen/evaluate_screen.dart';
 import 'package:prunners/screen/home_screen.dart';
 import 'package:prunners/screen/login_screen.dart';
@@ -35,7 +36,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black),
         ),
       ),
-      initialRoute: '/read',
+      initialRoute: '/badge',
       routes: {
         '/home': (_) => HomeScreen(),
         '/login': (_) => LoginScreen(),
@@ -49,6 +50,7 @@ class MyApp extends StatelessWidget {
         '/together': (_) => TogetherScreen(),
         '/write': (_) => WriteReviewScreen(),
         '/read': (_) => ReadReviewScreen(),
+        '/badge': (_) => BadgeScreen(),
       },
       home: HomeScreen(),
     );
