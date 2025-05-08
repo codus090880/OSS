@@ -6,36 +6,56 @@ import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/button_box.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController idController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    idController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  // 로그인 검증 로직
+
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 50),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TopBar(),
               const SizedBox(height: 8),
-              const Text(
-                '계획 없이 달리는 날',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF8E8E93),
+              Padding(
+                padding: const EdgeInsets.only(left: 100.0),
+                child: Text(
+                  '계획 없이 달리는 날',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF8E8E93),
+                  ),
                 ),
               ),
               const SizedBox(height: 80),
               GreyBox(
                 child: TextField(
+                  controller: idController,
                   decoration: InputDecoration(
                     hintText: '아이디를 입력하세요',
                     hintStyle: TextStyle(
-                      color: Color(0xFF8E8E93), // 회색빛
+                      color: Color(0xFF8E8E93),
                     ),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 17),
@@ -45,10 +65,11 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 10),
               GreyBox(
                 child: TextField(
+                  controller: passwordController,
                   decoration: InputDecoration(
                     hintText: '비밀번호를 입력하세요',
                     hintStyle: TextStyle(
-                      color: Color(0xFF8E8E93), // 회색빛
+                      color: Color(0xFF8E8E93),
                     ),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 17),
@@ -74,6 +95,7 @@ class LoginScreen extends StatelessWidget {
               ButtonBox(
                 text: '로그인',
                 onPressed: () {
+                  // 로그인 검증
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => HomeScreen()),
