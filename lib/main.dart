@@ -4,13 +4,14 @@ import 'package:prunners/screen/home_screen.dart';
 import 'package:prunners/screen/login_screen.dart';
 import 'package:prunners/screen/signup_screen.dart';
 import 'package:prunners/screen/userpage_screen.dart';
+import 'package:prunners/screen/runningmate.dart';
+import 'package:prunners/screen/add_runningmate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ko_KR', null);
   runApp(MyApp());
 }
-
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -27,13 +28,13 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black),
         ),
       ),
-      initialRoute: '/signup',
+      initialRoute: '/login',
       routes: {
         '/login': (_) => LoginScreen(),
-        '/signup': (_) => SignupScreen(),
         '/home': (_) => HomeScreen(),
         //'/running': (_) => RunningScreen(),
         '/profile': (_) => UserPageScreen(),
+        '/add_runningmate': (_) => AddRunningmate(),
       },
       home: HomeScreen(),
     );

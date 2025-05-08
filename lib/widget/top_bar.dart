@@ -24,10 +24,14 @@ class TopBar extends StatelessWidget {
 
 class CustomTopBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  final IconData? rightIcon;
+  final VoidCallback? onRightPressed;
 
   const CustomTopBar({
     Key? key,
     required this.title,
+    this.rightIcon,
+    this.onRightPressed,
   }) : super(key: key);
 
   @override
@@ -57,7 +61,16 @@ class CustomTopBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
 
-          SizedBox(width: 48),
+          if (rightIcon != null && onRightPressed != null)
+            IconButton(
+              icon: Icon(rightIcon, color: Colors.black, size: 28),
+              onPressed: onRightPressed,
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              hoverColor: Colors.transparent,
+            )
+          else
+            SizedBox(width: 48),
         ],
       ),
     );
