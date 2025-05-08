@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/bottom_bar.dart';
+import 'package:prunners/screen/add_runningmate.dart';
 
 
 class RunningMate extends StatelessWidget {
@@ -12,7 +13,10 @@ class RunningMate extends StatelessWidget {
         child: CustomTopBar(
           title: '러닝 메이트',
           onRightPressed: () {
-            Navigator.pushNamed(context, '/add_runningmate');
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AddRunningmate()),
+            );
           },
           rightIcon: Icons.person_add,
         ),

@@ -133,7 +133,7 @@ class _RunningtypeSelectScreenState extends State<RunningtypeSelectScreen> {
                 text: '다음',
                 onPressed: () {
                   if (isAlone) {
-                    Navigator.pushNamed(context, '/alone');
+                    Navigator.pushNamed(context, '/matching');
                   } else if (isTogether) {
                     Navigator.pushNamed(context, '/together');
                   }

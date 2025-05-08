@@ -12,6 +12,13 @@ import 'package:prunners/screen/signup_screen.dart';
 import 'package:prunners/screen/together_screen.dart';
 import 'package:prunners/screen/userpage_screen.dart';
 import 'package:prunners/screen/write_review_screen.dart';
+import 'package:prunners/screen/setting.dart';
+import 'package:prunners/screen/matching_screen.dart';
+import 'package:prunners/screen/record_screen.dart';
+import 'package:prunners/screen/after_matching.dart';
+import 'package:prunners/screen/chat_screen.dart';
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +42,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black),
         ),
       ),
-      initialRoute: '/read',
+      initialRoute: '/login',
       routes: {
         '/home': (_) => HomeScreen(),
         '/login': (_) => LoginScreen(),
@@ -49,6 +56,12 @@ class MyApp extends StatelessWidget {
         '/together': (_) => TogetherScreen(),
         '/write': (_) => WriteReviewScreen(),
         '/read': (_) => ReadReviewScreen(),
+        '/setting': (_) => Setting(),
+        '/matching': (_) => MatchingScreen(),
+        '/record': (_) => RecordScreen(),
+        '/after_matching' : (_) => AfterMatching(),
+        '/chat' : (_) => ChatScreen(),
+        '/user_set' : (_) => ProfileScreen(),
       },
       home: HomeScreen(),
     );

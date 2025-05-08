@@ -5,6 +5,7 @@ import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/rounded_shadow_box.dart';
 import 'package:prunners/screen/runningmate.dart';
 import 'package:prunners/screen/setting.dart';
+import 'package:prunners/screen/record_screen.dart';
 
 class UserPageScreen extends StatelessWidget {
   @override
@@ -172,7 +173,13 @@ class UserBody extends StatelessWidget {
                     if (item.label == '설정') {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => RunningMate()),
+                        MaterialPageRoute(builder: (_) => Setting()),
+                      );
+                    }
+                    if (item.label == '나의 기록') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => RecordScreen()),
                       );
                     }
                     // TODO: 다른 메뉴 항목은 추후 구현
