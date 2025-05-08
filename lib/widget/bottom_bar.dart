@@ -1,6 +1,7 @@
 // lib/widget/bottom_bar.dart
 import 'package:flutter/material.dart';
 
+
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -45,15 +46,15 @@ class BottomNavBar extends StatelessWidget {
           showUnselectedLabels: false,
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home, size: 18),
+              icon: Icon(Icons.home, size: 25),
               label: '홈',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.directions_run, size: 18),
+              icon: Icon(Icons.directions_run, size: 25),
               label: '러닝',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.account_circle, size: 18),
+              icon: Icon(Icons.account_circle, size: 25),
               label: '마이',
             ),
           ],
