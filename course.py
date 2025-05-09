@@ -44,8 +44,8 @@ class RunHistory(models.Model):
     start_time = models.TimeField() # 시작 시간
     distance_km = models.FloatField()
     duration_min = models.IntegerField()
-    average_cadence = models.IntegerField()
-    average_heart_rate = models.IntegerField()
+    cadence = models.IntegerField()
+    heart_rate = models.IntegerField()
 
     class Meta:
         ordering = ['-date', '-start_time'] # 최신순으로 정렬
