@@ -32,22 +32,38 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signUp() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
-    // 간단한 비밀번호 확인
+
+    // 디버깅 로그
+    print('[DEBUG] 입력된 이메일: $email');
+    print('[DEBUG] 입력된 비밀번호: $password');
+
     if (password != confirmPasswordController.text) {
+      print('[DEBUG] 비밀번호 불일치');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('비밀번호가 일치하지 않습니다.')),
       );
       return;
     }
+
+    final url = Uri.parse('http://10.74.25.47:8000/signup/');
+    final body = jsonEncode({
+      'email': email,
+      'password': password,
+    });
+
+    print('[DEBUG] POST $url');
+    print('[DEBUG] BODY: $body');
+
     try {
       final response = await http.post(
-        Uri.parse('https://your.api/signup'),
+        url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: body,
       );
+
+      print('[DEBUG] 응답 코드: ${response.statusCode}');
+      print('[DEBUG] 응답 본문: ${response.body}');
+
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('ok')),
@@ -62,6 +78,7 @@ class _SignupScreenState extends State<SignupScreen> {
         );
       }
     } catch (e) {
+      print('[DEBUG] 예외 발생: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
       );
