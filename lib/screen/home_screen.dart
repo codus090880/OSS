@@ -9,12 +9,14 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: HomeBody(),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: 0,
-        onTap: (index) {
-          if (index == 0) return;
-          Navigator.pushReplacementNamed(context, ['/home', '/running', '/profile'][index]);
-        },
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: BottomNavBar(
+          currentIndex: 0,
+          onTap: (index) {
+            Navigator.pushReplacementNamed(context, ['/home', '/running', '/course', '/profile'][index]);
+          },
+        ),
       ),
     );
   }

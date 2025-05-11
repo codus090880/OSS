@@ -188,10 +188,9 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
         child: BottomNavBar(
           currentIndex: 2,
           onTap: (index) {
-            if (index == 1) return;
             Navigator.pushReplacementNamed(
               context,
-              ['/home', '/running', '/profile'][index],
+              ['/home', '/running', '/course', '/profile'][index],
             );
           },
         ),

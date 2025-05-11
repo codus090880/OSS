@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 
-class AloneScreen extends StatefulWidget {
-  const AloneScreen({super.key});
+class CourseRecommendScreen extends StatefulWidget {
+  const CourseRecommendScreen({super.key});
 
   @override
-  State<AloneScreen> createState() => _AloneScreenState();
+  State<CourseRecommendScreen> createState() => _CourseRecommendScreen();
 }
 
-class _AloneScreenState extends State<AloneScreen> {
+class _CourseRecommendScreen extends State<CourseRecommendScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: const Center(
         child: Text(
-            '혼자 뛸래요'
-        )
+            '코스 추천'
+        ),
       ),
       bottomNavigationBar: SafeArea(
         top: false,
         child: BottomNavBar(
-          currentIndex: 1, // 코스 탭 인덱스
+          currentIndex: 2, // 코스 탭 인덱스
           onTap: (index) {
             Navigator.pushReplacementNamed(
               context,

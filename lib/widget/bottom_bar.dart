@@ -16,9 +16,15 @@ class BottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 40),
-      decoration: ShapeDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        shape: RoundedRectangleBorder(
+        border: Border(
+          top: BorderSide(
+            color: Colors.grey.shade300,
+            width: 1,
+          ),
+        ),
+        /* shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
         shadows: [
@@ -29,6 +35,7 @@ class BottomNavBar extends StatelessWidget {
             spreadRadius: 0,
           )
         ],
+         */
       ),
       child: SizedBox(
         height: 60,
@@ -52,6 +59,10 @@ class BottomNavBar extends StatelessWidget {
             BottomNavigationBarItem(
               icon: Icon(Icons.directions_run, size: 25),
               label: '러닝',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.map, size: 25),
+              label: '코스',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.account_circle, size: 25),

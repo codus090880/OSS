@@ -1,5 +1,3 @@
-// lib/screen/signup_screen.dart
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:prunners/screen/login_screen.dart';
@@ -32,38 +30,22 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signUp() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
-
-    // 디버깅 로그
-    print('[DEBUG] 입력된 이메일: $email');
-    print('[DEBUG] 입력된 비밀번호: $password');
-
+    // 간단한 비밀번호 확인
     if (password != confirmPasswordController.text) {
-      print('[DEBUG] 비밀번호 불일치');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('비밀번호가 일치하지 않습니다.')),
       );
       return;
     }
-
-    final url = Uri.parse('http://10.74.25.47:8000/signup/');
-    final body = jsonEncode({
-      'email': email,
-      'password': password,
-    });
-
-    print('[DEBUG] POST $url');
-    print('[DEBUG] BODY: $body');
-
     try {
-      final response = await http.post(
-        url,
+        final response = await http.post(
+        Uri.parse('http://10.74.25.47:8000/signup'),
         headers: {'Content-Type': 'application/json'},
-        body: body,
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
       );
-
-      print('[DEBUG] 응답 코드: ${response.statusCode}');
-      print('[DEBUG] 응답 본문: ${response.body}');
-
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('ok')),
@@ -78,13 +60,11 @@ class _SignupScreenState extends State<SignupScreen> {
         );
       }
     } catch (e) {
-      print('[DEBUG] 예외 발생: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
       );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -112,7 +92,6 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     const SizedBox(height: 80),
-
                     GreyBox(
                       child: TextField(
                         controller: emailController,

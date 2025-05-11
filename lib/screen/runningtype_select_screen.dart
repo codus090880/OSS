@@ -133,7 +133,7 @@ class _RunningtypeSelectScreenState extends State<RunningtypeSelectScreen> {
                 text: '다음',
                 onPressed: () {
                   if (isAlone) {
-                    Navigator.pushNamed(context, '/matching');
+                    Navigator.pushNamed(context, '/alone');
                   } else if (isTogether) {
                     Navigator.pushNamed(context, '/together');
                   }
@@ -152,7 +152,7 @@ class _RunningtypeSelectScreenState extends State<RunningtypeSelectScreen> {
             if (index == 1) return;
             Navigator.pushReplacementNamed(
               context,
-              ['/home', '/running', '/profile'][index],
+              ['/home', '/running', '/course', '/profile'][index],
             );
           },
         ),

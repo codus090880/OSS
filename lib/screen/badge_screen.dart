@@ -83,12 +83,11 @@ class _BadgeScreenState extends State<BadgeScreen> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: BottomNavBar(
-          currentIndex: 2,
+          currentIndex: 3,
           onTap: (index) {
-            if (index == 1) return;
             Navigator.pushReplacementNamed(
               context,
-              ['/home', '/running', '/profile'][index],
+              ['/home', '/running', '/course', '/profile'][index],
             );
           },
         ),
