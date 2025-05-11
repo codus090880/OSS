@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:prunners/screen/login_screen.dart';
+import 'package:prunners/screen/agree_screen.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/grey_box.dart';
 import 'package:prunners/widget/button_box.dart';
@@ -52,7 +53,7 @@ class _SignupScreenState extends State<SignupScreen> {
         );
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => LoginScreen()),
+          MaterialPageRoute(builder: (_) => AgreeScreen()),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

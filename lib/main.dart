@@ -19,12 +19,44 @@ import 'package:prunners/screen/record_screen.dart';
 import 'package:prunners/screen/after_matching.dart';
 import 'package:prunners/screen/chat_screen.dart';
 import 'package:prunners/screen/badge_screen.dart';
+import 'package:prunners/screen/add_runningmate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:prunners/model/push.dart';
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ko_KR', null);
+  await PushNotificationService.initialize();
+  Workmanager().initialize(
+    callbackDispatcher,
+    isInDebugMode: false,
+  );
+
+  final prefs = await SharedPreferences.getInstance();
+  final enabled = prefs.getBool('pushEnabled') ?? false;
+  if (enabled) {
+    Workmanager().registerPeriodicTask(
+      'weatherTask',
+      'weatherTask',
+      frequency: Duration(days: 1),
+      initialDelay: _calculateInitialDelay(),
+
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+      ),
+    );
+  }
   runApp(MyApp());
+}
+
+Duration _calculateInitialDelay() {
+  final now = DateTime.now();
+  final next7 = DateTime(now.year, now.month, now.day, 7);
+  return now.isAfter(next7)
+      ? next7.add(Duration(days: 1)).difference(now)
+      : next7.difference(now);
 }
 
 class MyApp extends StatelessWidget {
@@ -64,6 +96,7 @@ class MyApp extends StatelessWidget {
         '/user_set' : (_) => ProfileScreen(),
         '/badge': (_) => BadgeScreen(),
         '/course': (_) => CourseRecommendScreen(),
+        '/addrunningmate': (_) => AddRunningmate(),
       },
       home: HomeScreen(),
     );

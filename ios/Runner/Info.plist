@@ -2,6 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+<key>UIBackgroundModes</key>
+  <array>
+    <string>fetch</string>
+    <string>location</string>
+  </array>
+<key>NSLocationWhenInUseUsageDescription</key>
+		<string>사용자의 현재 위치는 사용자 근처의 정보를 가져오는데 반드시 필요합니다!</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>사용자의 현재 위치는 사용자 근처의 정보를 가져오는데 반드시 필요합니다!</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>사용자의 현재 위치는 사용자 근처의 정보를 가져오는데 반드시 필요합니다!</string>
     <key>NSAppTransportSecurity</key>
 	<dict>
 	    <key>NSAllowsArbitraryLoads</key>

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
+import 'package:prunners/screen/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:prunners/model/push.dart';
+
 
 class AgreeScreen extends StatefulWidget {
   const AgreeScreen({super.key});
@@ -15,6 +19,11 @@ class _AgreeScreenState extends State<AgreeScreen> {
   bool _isChecked2 = false;
   bool _isChecked3 = false;
   bool _isButtonPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   // 전체 동의 처리
     void updateAllchecked() {
@@ -36,7 +45,7 @@ class _AgreeScreenState extends State<AgreeScreen> {
 
   void active_button() {
       setState(() {
-        _isButtonPressed = _isChecked2 && _isChecked3;
+        _isButtonPressed = _isChecked1 && _isChecked2;
         _allChecked = _isChecked1 && _isChecked2 && _isChecked3;
       });
   }
@@ -110,9 +119,9 @@ class _AgreeScreenState extends State<AgreeScreen> {
                 ),
               ),
               const SizedBox(height: 30),
-              AgreementItem(1, '서비스 이용 약관(선택)'),
+              AgreementItem(1, '서비스 이용 약관(필수)'),
               AgreementItem(2, '서비스 이용 약관(필수)'),
-              AgreementItem(3, '서비스 이용 약관(필수)'),
+              AgreementItem(3, '푸쉬 알림 동의(선택)'),
             ],
           ),
         ),
@@ -121,7 +130,15 @@ class _AgreeScreenState extends State<AgreeScreen> {
           padding: const EdgeInsets.fromLTRB(32, 0, 32, 60),
           child: _isButtonPressed ? OutlinedButtonBox(
             text: '확인',
-            onPressed: () {},
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('pushEnabled', _isChecked3);
+              await PushNotificationService.initialize();
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
           ) : AbsorbPointer(
             child: Opacity(
               opacity: 0.3,

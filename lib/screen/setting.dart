@@ -2,24 +2,59 @@ import 'package:flutter/material.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/rounded_shadow_box.dart';
-import 'package:prunners/screen//profile_screen.dart';
+import 'package:prunners/screen/profile_screen.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:prunners/model/push.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Setting extends StatefulWidget {
+  const Setting({Key? key}) : super(key: key);
+
   @override
-  _Setting createState() => _Setting();
+  _SettingState createState() => _SettingState();
 }
 
-class _Setting extends State<Setting> {
+class _SettingState extends State<Setting> {
   bool _pushEnabled = false;
 
   final List<_MenuItem> _menuItems = const [
     _MenuItem(icon: Icons.person_outline, label: '프로필 설정'),
     _MenuItem(icon: Icons.lock,         label: '비밀번호 변경'),
     _MenuItem(icon: Icons.description,  label: '이용 약관'),
-    _MenuItem(icon: Icons.notifications, label: '푸쉬 알림'),
+    _MenuItem(icon: Icons.notifications,label: '푸쉬 알림'),
     _MenuItem(icon: Icons.logout,       label: '로그아웃'),
     _MenuItem(icon: Icons.delete,       label: '회원탈퇴'),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPushSetting();
+  }
+
+  Future<void> _loadPushSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('pushEnabled') ?? false;
+    setState(() => _pushEnabled = enabled);
+
+    if (_pushEnabled) {
+      _registerWeatherTask();
+    }
+  }
+
+  Future<void> _registerWeatherTask() async {
+    await PushNotificationService.initialize();
+    Workmanager().registerPeriodicTask(
+      'weatherTask',
+      'weatherTask',
+      frequency: Duration(days: 1),
+      constraints: Constraints(networkType: NetworkType.connected),
+    );
+  }
+
+  Future<void> _cancelWeatherTask() async {
+    await Workmanager().cancelByUniqueName('weatherTask');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +134,18 @@ class _Setting extends State<Setting> {
     if (item.label == '푸쉬 알림') {
       trailing = Switch(
         value: _pushEnabled,
-        onChanged: (v) => setState(() => _pushEnabled = v),
+        onChanged: (v) async {
+          setState(() => _pushEnabled = v);
+
+          final prefs = await SharedPreferences.getInstance();
+          prefs.setBool('pushEnabled', v);
+
+          if (v) {
+            _registerWeatherTask();
+          } else {
+            _cancelWeatherTask();
+          }
+        },
       );
     } else {
       trailing = Icon(

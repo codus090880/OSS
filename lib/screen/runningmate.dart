@@ -32,7 +32,7 @@ class RunningMate extends StatelessWidget {
       bottomNavigationBar: SafeArea(
         top: false,
         child: BottomNavBar(
-          currentIndex: 2,
+          currentIndex: 3,
           onTap: (index) {
             const routes = ['/home', '/running', '/course', '/profile'];
             if (index == 3) {
