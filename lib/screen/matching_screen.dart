@@ -47,16 +47,19 @@ class MatchingScreen extends StatelessWidget {
       ),
 
 
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: 1,
-        onTap: (index) {
-          const routes = ['/home', '/running', '/profile'];
-          if (index == 1) {
-            Navigator.pushReplacementNamed(context, '/running');
-          } else {
-            Navigator.pushReplacementNamed(context, routes[index]);
-          }
-        },
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: BottomNavBar(
+          currentIndex: 1,
+          onTap: (index) {
+            const routes = ['/home', '/running', '/course', '/profile'];
+            if (index == 1) {
+              Navigator.pushReplacementNamed(context, '/running');
+            } else {
+              Navigator.pushReplacementNamed(context, routes[index]);
+            }
+          },
+        ),
       ),
     );
   }

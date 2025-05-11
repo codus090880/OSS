@@ -113,12 +113,12 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: BottomNavBar(
-          currentIndex: 1,
+          currentIndex: 2,
           onTap: (index) {
-            if (index == 1) return;
+            if (index == 2) return;
             Navigator.pushReplacementNamed(
               context,
-              ['/home', '/running', '/profile'][index],
+              ['/home', '/running', '/course', '/profile'][index],
             );
           },
         ),

@@ -77,16 +77,19 @@ class _Setting extends State<Setting> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: 2,
-        onTap: (index) {
-          const routes = ['/home', '/running', '/profile'];
-          if (index == 2) {
-            Navigator.pushReplacementNamed(context, '/profile');
-          } else {
-            Navigator.pushReplacementNamed(context, routes[index]);
-          }
-        },
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: BottomNavBar(
+          currentIndex: 3,
+          onTap: (index) {
+            const routes = ['/home', '/running', '/course', '/profile'];
+            if (index == 3) {
+              Navigator.pushReplacementNamed(context, '/profile');
+            } else {
+              Navigator.pushReplacementNamed(context, routes[index]);
+            }
+          },
+        ),
       ),
     );
   }

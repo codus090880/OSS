@@ -1,5 +1,3 @@
-// lib/screen/signup_screen.dart
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:prunners/screen/login_screen.dart';
@@ -40,8 +38,8 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
     try {
-      final response = await http.post(
-        Uri.parse('https://your.api/signup'),
+        final response = await http.post(
+        Uri.parse('http://10.74.25.47:8000/signup'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
@@ -67,7 +65,6 @@ class _SignupScreenState extends State<SignupScreen> {
       );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,7 +92,6 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     const SizedBox(height: 80),
-
                     GreyBox(
                       child: TextField(
                         controller: emailController,

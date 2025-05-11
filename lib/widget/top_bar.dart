@@ -39,7 +39,7 @@ class CustomTopBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 7, 20, 7),
+      padding: EdgeInsets.fromLTRB(20, 50, 20, 7),
       color: Colors.white,
       child: Row(
         children: [
