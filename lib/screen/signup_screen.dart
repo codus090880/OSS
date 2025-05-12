@@ -5,8 +5,8 @@ import 'package:prunners/screen/agree_screen.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/grey_box.dart';
 import 'package:prunners/widget/button_box.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -31,38 +31,53 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signUp() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
-    // 간단한 비밀번호 확인
+
     if (password != confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('비밀번호가 일치하지 않습니다.')),
       );
       return;
     }
+
+    final dio = Dio();
+    dio.options.headers['content-Type'] = 'application/json';
+    dio.options.headers['accept'] = 'application/json';
+    dio.options.connectTimeout = Duration(seconds: 30);
+    dio.options.receiveTimeout = Duration(seconds: 30);
+
     try {
-        final response = await http.post(
-        Uri.parse('http://10.74.25.47:8000/signup'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
+      final response = await dio.post(
+        'http://172.20.10.6:8000/signup/',
+        data: {
           'email': email,
           'password': password,
-        }),
+        },
       );
-      if (response.statusCode == 200) {
+
+      //print('[DEBUG] 응답 코드: ${response.statusCode}');
+      //print('[DEBUG] 응답 데이터: ${response.data}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ok')),
+          SnackBar(content: Text('회원가입 성공!')),
         );
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => AgreeScreen()),
+          MaterialPageRoute(builder: (_) => LoginScreen()),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('가입 실패: ${response.body}')),
+          SnackBar(content: Text('가입 실패')),
         );
       }
     } catch (e) {
+      print('[DEBUG] 예외 발생: $e');
+      if (e is DioError) {
+        print('[DEBUG] DioError 상세: ${e.type}, ${e.message}');
+        print('[DEBUG] 응답: ${e.response?.statusCode}, ${e.response?.data}');
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('네트워크 오류가 발생했습니다.')),
+        SnackBar(content: Text('연결 오류: $e')),
       );
     }
   }
