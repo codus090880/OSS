@@ -14,7 +14,10 @@ class PushNotificationService {
 
   static Future<void> initialize() async {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidInit);
+    const initSettings = InitializationSettings(
+        android: androidInit,
+        iOS: DarwinInitializationSettings(),
+    );
     await _plugin.initialize(initSettings);
 
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
