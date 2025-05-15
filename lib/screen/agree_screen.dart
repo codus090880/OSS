@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
-import 'package:prunners/screen/login_screen.dart';
+import 'package:prunners/screen/profile_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:prunners/model/push.dart';
 
@@ -136,7 +136,7 @@ class _AgreeScreenState extends State<AgreeScreen> {
               await PushNotificationService.initialize();
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
               );
             },
           ) : AbsorbPointer(

@@ -19,6 +19,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
+  final _pwdReg = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#\$&*~]).{8,}$');
+  final _emailReg = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
 
   @override
   void dispose() {
@@ -32,9 +34,22 @@ class _SignupScreenState extends State<SignupScreen> {
     final email = emailController.text.trim();
     final password = passwordController.text;
 
+
+    if (!_emailReg.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('유효한 이메일 형식이 아닙니다.')),
+      );
+      return;
+    }
     if (password != confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('비밀번호가 일치하지 않습니다.')),
+      );
+      return;
+    }
+    if (!_pwdReg.hasMatch(password)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('비밀번호는 최소 8자 이상, 숫자·영문·특수문자를 모두 포함해야 합니다.')),
       );
       return;
     }
@@ -63,7 +78,7 @@ class _SignupScreenState extends State<SignupScreen> {
         );
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => LoginScreen()),
+          MaterialPageRoute(builder: (_) => AgreeScreen()),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

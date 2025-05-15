@@ -94,7 +94,7 @@ class UserBody extends StatelessWidget {
                             Text(
                               '38.0',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 16,
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w600,
                                 color: Colors.black,
@@ -133,11 +133,11 @@ class UserBody extends StatelessWidget {
                               size: 34,
                               color: Colors.black,
                             ),
-                            SizedBox(width: 16),
+                            SizedBox(width: 8),
                             Text(
                               'Beginner',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 16,
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w600,
                                 color: Colors.black,

@@ -28,7 +28,7 @@ class RoundedShadowBox extends StatelessWidget {
         shadows: [
           BoxShadow(
             color: Colors.grey,
-            blurRadius: 10,
+            blurRadius: 5,
             offset: Offset(0, 4),
             spreadRadius: 0,
           )

@@ -1,16 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:prunners/widget/top_bar.dart';
-import 'package:prunners/widget/grey_box.dart';
-import 'package:prunners/widget/rounded_shadow_box.dart';
 import 'package:prunners/widget/bottom_bar.dart';
+import 'package:prunners/widget/grey_box.dart';
+
+class RunningMate {
+  final String nickname;
+  final String imageUrl;
+  final int userId;
+
+  RunningMate({
+    required this.userId,
+    required this.nickname,
+    required this.imageUrl,
+  });
+
+  factory RunningMate.fromJson(Map<String, dynamic> json) {
+    return RunningMate(
+      userId: json['id'],
+      nickname: json['nickname'],
+      imageUrl: json['profile_url'],
+    );
+  }
+}
 
 class AddRunningmate extends StatefulWidget {
   @override
-  _AddRunningmate createState() => _AddRunningmate();
+  _AddRunningmateState createState() => _AddRunningmateState();
 }
 
-class _AddRunningmate extends State<AddRunningmate> {
+class _AddRunningmateState extends State<AddRunningmate> {
   final TextEditingController _controller = TextEditingController();
+  final Dio _dio = Dio(BaseOptions(
+    baseUrl: 'http://172.20.10.6:8000',
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
+    headers: {
+      'content-type': 'application/json',
+      'accept': 'application/json',
+    },
+  ));
+  List<RunningMate> _results = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -24,28 +55,74 @@ class _AddRunningmate extends State<AddRunningmate> {
     super.dispose();
   }
 
-  void _clear() => _controller.clear();
+  Future<void> _search() async {
+    final query = _controller.text.trim();
+    if (query.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+      _results = [];
+    });
+
+    try {
+      final resp = await _dio.get('/search_mates/', queryParameters: {
+        'q': query,
+      });
+      final data = resp.data as List;
+      setState(() {
+        _results = data
+            .map((json) => RunningMate.fromJson(json as Map<String, dynamic>))
+            .toList();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('검색 중 오류가 발생했습니다.')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _addFriend(int userId) async {
+    try {
+      final resp = await _dio.post('/add_friend/', data: {
+        'friend_id': userId,
+      });
+      if (resp.statusCode == 200) {
+        setState(() {
+          _results.removeWhere((m) => m.userId == userId);
+        });
+      } else {
+        throw Exception('status ${resp.statusCode}');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('친구 추가에 실패했습니다.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final hasText = _controller.text.isNotEmpty;
-
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(60),
         child: CustomTopBar(title: '친구 등록'),
       ),
-
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 검색 입력창
+            // 검색창
             GreyBox(
               child: Row(
                 children: [
-                  Icon(Icons.search, color: Color(0xFF8390A1)),
+                  // 원래 스타일 유지 + 탭 시 _search() 호출
+                  GestureDetector(
+                    onTap: _search,
+                    child: Icon(Icons.search, color: Color(0xFF8390A1)),
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: TextField(
@@ -67,15 +144,18 @@ class _AddRunningmate extends State<AddRunningmate> {
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(vertical: 18),
                       ),
+                      onSubmitted: (_) => _search(),
                     ),
                   ),
-                  if (hasText)
+                  if (_controller.text.isNotEmpty)
                     IconButton(
                       icon: Icon(Icons.cancel, size: 20, color: Colors.grey),
-                      onPressed: _clear,
+                      onPressed: () {
+                        _controller.clear();
+                        setState(() => _results.clear());
+                      },
                       splashColor: Colors.transparent,
                       highlightColor: Colors.transparent,
-                      hoverColor: Colors.transparent,
                     ),
                 ],
               ),
@@ -83,39 +163,81 @@ class _AddRunningmate extends State<AddRunningmate> {
 
             SizedBox(height: 20),
 
-            // 검색 결과 자리
-            RoundedShadowBox(
-              height: 78,
-              width: double.infinity,
-              child: Center(
-                child: Text(
-                  '// 검색 결과 표시 영역',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF333333),
-                  ),
-                ),
+            Expanded(
+              child: _isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : _results.isEmpty
+                  ? Center(child: Text('검색 결과가 없습니다.'))
+                  : ListView.separated(
+                itemCount: _results.length,
+                separatorBuilder: (_, __) => SizedBox(height: 12),
+                itemBuilder: (context, idx) {
+                  final mate = _results[idx];
+                  return Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    height: 78,
+                    decoration: ShapeDecoration(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      shadows: [
+                        BoxShadow(
+                          color: Color(0x192E3176),
+                          blurRadius: 28,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // 프로필 이미지
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: Image.network(
+                            mate.imageUrl,
+                            width: 57,
+                            height: 57,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        // 닉네임
+                        Expanded(
+                          child: Text(
+                            mate.nickname,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                        ),
+                        // 친구 추가 버튼
+                        IconButton(
+                          icon: Icon(Icons.person_add),
+                          onPressed: () => _addFriend(mate.userId),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
-
-
           ],
         ),
       ),
-
       bottomNavigationBar: SafeArea(
         top: false,
         child: BottomNavBar(
           currentIndex: 3,
           onTap: (index) {
             const routes = ['/home', '/running', '/course', '/profile'];
-            if (index == 3) {
-              Navigator.pushReplacementNamed(context, '/profile');
-            } else {
-              Navigator.pushReplacementNamed(context, routes[index]);
-            }
+            Navigator.pushReplacementNamed(
+                context,
+                index == 3
+                    ? '/profile'
+                    : routes[index]);
           },
         ),
       ),

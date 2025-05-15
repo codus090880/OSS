@@ -23,43 +23,43 @@ import 'package:prunners/screen/add_runningmate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:prunners/model/push.dart';
+import 'package:prunners/model/auth_service.dart';
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ko_KR', null);
   await PushNotificationService.initialize();
-  Workmanager().initialize(
-    callbackDispatcher,
-    isInDebugMode: false,
-  );
+  AuthService.setupInterceptor();
+
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: false,);
 
   final prefs = await SharedPreferences.getInstance();
   final enabled = prefs.getBool('pushEnabled') ?? false;
   if (enabled) {
-    Workmanager().registerPeriodicTask(
+    Workmanager().registerOneOffTask(
+      'testOnce',
       'weatherTask',
-      'weatherTask',
-      frequency: Duration(days: 1),
-      initialDelay: _calculateInitialDelay(),
-
-      constraints: Constraints(
-        networkType: NetworkType.connected,
-      ),
+      initialDelay: Duration(seconds: 5),
     );
   }
-  runApp(MyApp());
+  final isLoggedIn = await AuthService.isLoggedIn();
+  runApp(MyApp(loggedIn: isLoggedIn));
 }
 
-Duration _calculateInitialDelay() {
+Duration _calculateDelayUntil(int hour, int minute) {
   final now = DateTime.now();
-  final next7 = DateTime(now.year, now.month, now.day, 7);
-  return now.isAfter(next7)
-      ? next7.add(Duration(days: 1)).difference(now)
-      : next7.difference(now);
+  final target = DateTime(now.year, now.month, now.day, hour, minute);
+  return now.isAfter(target)
+      ? target.add(Duration(days: 1)).difference(now)
+      : target.difference(now);
 }
 
 class MyApp extends StatelessWidget {
+  final bool loggedIn;
+
+  const MyApp({required this.loggedIn, super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -75,7 +75,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black),
         ),
       ),
-      initialRoute: '/login',
+      initialRoute: loggedIn ? '/home' : '/login',
       routes: {
         '/home': (_) => HomeScreen(),
         '/login': (_) => LoginScreen(),

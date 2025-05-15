@@ -6,6 +6,8 @@ import 'package:prunners/screen/profile_screen.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:prunners/model/push.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:prunners/screen/login_screen.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class Setting extends StatefulWidget {
   const Setting({Key? key}) : super(key: key);
@@ -163,6 +165,9 @@ class _SettingState extends State<Setting> {
             MaterialPageRoute(builder: (_) => ProfileScreen()),
           );
         }
+        else if (item.label == '로그아웃') {
+          logout(context);
+        }
       },
       child: Container(
         height: 48,
@@ -193,4 +198,16 @@ class _MenuItem {
   final IconData icon;
   final String label;
   const _MenuItem({required this.icon, required this.label});
+}
+
+Future<void> logout(BuildContext context) async {
+  final storage = FlutterSecureStorage();
+  await storage.delete(key: 'ACCESS_TOKEN');
+  await storage.delete(key: 'REFRESH_TOKEN');
+
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (_) => LoginScreen()),
+        (route) => false,
+  );
 }

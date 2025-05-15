@@ -38,21 +38,25 @@ class CustomTopBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    const double bottomPadding = 8.0;
+
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 50, 20, 7),
       color: Colors.white,
+      padding: EdgeInsets.fromLTRB(
+        20,
+        statusBarHeight + 8,
+        20,
+        bottomPadding,
+      ),
       child: Row(
         children: [
-          // 좌측 뒤로가기
           IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.black, size: 28),
+            icon: Icon(Icons.arrow_back, size: 28),
             onPressed: () => Navigator.pop(context),
             splashColor: Colors.transparent,
             highlightColor: Colors.transparent,
-            hoverColor: Colors.transparent,
           ),
-
-          // 가운데 타이틀
           Expanded(
             child: Center(
               child: Text(
@@ -65,15 +69,12 @@ class CustomTopBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
           ),
-
-          // 우측 아이콘이 넘어왔을 때만 렌더링
           if (rightIcon != null && onRightPressed != null)
             IconButton(
-              icon: Icon(rightIcon, color: Colors.black, size: 28),
+              icon: Icon(rightIcon, size: 28),
               onPressed: onRightPressed,
               splashColor: Colors.transparent,
               highlightColor: Colors.transparent,
-              hoverColor: Colors.transparent,
             )
           else
             SizedBox(width: 48),
@@ -83,5 +84,14 @@ class CustomTopBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(60);
+  Size get preferredSize {
+
+    final double statusBarHeight =
+        WidgetsBinding.instance.window.padding.top /
+            WidgetsBinding.instance.window.devicePixelRatio;
+    final double totalHeight =
+        statusBarHeight + 72;
+    return Size.fromHeight(totalHeight);
+  }
 }
+
