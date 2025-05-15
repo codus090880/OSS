@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:prunners/screen/agree_screen.dart';
 import 'package:prunners/screen/alone_screen.dart';
-import 'package:prunners/screen/course_recommend_screen.dart';
+import 'package:prunners/screen/course_recommended_screen.dart';
+import 'package:prunners/screen/course_screen.dart';
 import 'package:prunners/screen/evaluate_screen.dart';
 import 'package:prunners/screen/home_screen.dart';
 import 'package:prunners/screen/login_screen.dart';
@@ -95,7 +96,8 @@ class MyApp extends StatelessWidget {
         '/chat' : (_) => ChatScreen(),
         '/user_set' : (_) => ProfileScreen(),
         '/badge': (_) => BadgeScreen(),
-        '/course': (_) => CourseRecommendScreen(),
+        '/course': (_) => CourseRecommendedScreen(),
+        '/course_detail': (_) => CourseScreen(),
         '/addrunningmate': (_) => AddRunningmate(),
       },
       home: HomeScreen(),
