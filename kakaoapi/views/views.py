@@ -1,9 +1,15 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .models import User
-from .serializers import UserSignupSerializer
+from kakaoapi.models import User
+from kakaoapi.serializers import UserSignupSerializer
 from django.http import JsonResponse
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from kakaoapi.views.matching import find_one_to_one_match
+from kakaoapi.views.matching import start_one_to_one_match
+from rest_framework_simplejwt.tokens import RefreshToken
 
 @api_view(['POST', 'OPTIONS'])
 def user_signup(request):
@@ -24,7 +30,7 @@ def user_signup(request):
 @api_view(['POST', 'OPTIONS'])
 def user_login(request):
     if request.method == 'OPTIONS':
-        return Response(status=200)  # ✅ Preflight 대응
+        return Response(status=200)
 
     email = request.data.get('email')
     password = request.data.get('password')
@@ -32,8 +38,27 @@ def user_login(request):
     try:
         user = User.objects.get(email=email)
         if user.check_password(password):
-            return Response({"message": "로그인 성공!", "user_id": user.id})
+            # ✅ 토큰 생성
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "message": "로그인 성공!",
+                "user_id": user.id,
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            })
         else:
             return Response({"message": "비밀번호가 틀렸습니다"}, status=400)
     except User.DoesNotExist:
         return Response({"message": "이메일이 존재하지 않습니다"}, status=404)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def start_one_to_one_match(request):
+    match = find_one_to_one_match(request.user)
+    if match:
+        return Response({
+            "status": "waiting_for_response",
+            "match_id": match.id,
+            "to_user": match.to_user.username,
+            "distance_km": match.distance_km,
+        })
+    return Response({"status": "no_match_found"})
