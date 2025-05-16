@@ -90,92 +90,96 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomTopBar(title: '비밀번호 변경'),
       body: SafeArea(
-        child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (step >= 1) ...[
-                GreyBox(
-                  child: TextField(
-                    controller: emailController,
-                    decoration: const InputDecoration(
-                      hintText: '가입하신 이메일을 입력해주세요',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 17),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-              if (step >= 2) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('인증번호 입력'),
-                    Text(
-                      formatTime(remainingSeconds),
-                      style: TextStyle(
-                        color: remainingSeconds > 0 ? Colors.black : Colors.red,
+        child: Column(
+          children: [
+            CustomTopBar(title: '비밀번호 변경'),
+            SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (step >= 1) ...[
+                    GreyBox(
+                      child: TextField(
+                        controller: emailController,
+                        decoration: const InputDecoration(
+                          hintText: '가입하신 이메일을 입력해주세요',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 17),
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 16),
                   ],
-                ),
-                const SizedBox(height: 8),
-                GreyBox(
-                  child: TextField(
-                    controller: codeController,
-                    decoration: const InputDecoration(
-                      hintText: '인증번호를 입력해주세요',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 17),
+                  if (step >= 2) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('인증번호 입력'),
+                        Text(
+                          formatTime(remainingSeconds),
+                          style: TextStyle(
+                            color: remainingSeconds > 0 ? Colors.black : Colors.red,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                    const SizedBox(height: 8),
+                    GreyBox(
+                      child: TextField(
+                        controller: codeController,
+                        decoration: const InputDecoration(
+                          hintText: '인증번호를 입력해주세요',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 17),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
-              if (step >= 3) ...[
-                GreyBox(
-                  child: TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      hintText: '새로운 비밀번호를 입력해주세요',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 17),
+                  if (step >= 3) ...[
+                    GreyBox(
+                      child: TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          hintText: '새로운 비밀번호를 입력해주세요',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 17),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                GreyBox(
-                  child: TextField(
-                    controller: confirmController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      hintText: '비밀번호 재확인',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 17),
+                    const SizedBox(height: 16),
+                    GreyBox(
+                      child: TextField(
+                        controller: confirmController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          hintText: '비밀번호 재확인',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 17),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                    const SizedBox(height: 16),
+                  ],
 
-              const SizedBox(height: 30),
-              ButtonBox(
-                onPressed: onNextStep,
-                text: step == 1
-                    ? '인증번호 요청'
-                    : step == 2
-                    ? '인증번호 확인'
-                    : '비밀번호 재설정',
+                  const SizedBox(height: 30),
+                  ButtonBox(
+                    onPressed: onNextStep,
+                    text: step == 1
+                        ? '인증번호 요청'
+                        : step == 2
+                        ? '인증번호 확인'
+                        : '비밀번호 재설정',
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
