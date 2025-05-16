@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:prunners/screen/reset_password_screen.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/rounded_shadow_box.dart';
@@ -167,6 +168,11 @@ class _SettingState extends State<Setting> {
         }
         else if (item.label == '로그아웃') {
           logout(context);
+        } else if (item.label == '비밀번호 변경') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ResetPasswordScreen()),
+          );
         }
       },
       child: Container(

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:prunners/screen/home_screen.dart';
+import 'package:prunners/screen/reset_password_screen.dart';
 import 'package:prunners/screen/signup_screen.dart';
 import 'package:prunners/widget/grey_box.dart';
 import 'package:prunners/widget/top_bar.dart';
@@ -138,9 +139,16 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ResetPasswordScreen(),
+                      ),
+                    );
+                  },
                   child: const Text(
-                    '이메일/비밀번호 찾기',
+                    '비밀번호를 잊으셨나요?',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,

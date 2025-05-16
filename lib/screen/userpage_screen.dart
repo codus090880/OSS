@@ -8,6 +8,8 @@ import 'package:prunners/screen/setting.dart';
 import 'package:prunners/screen/record_screen.dart';
 import 'package:prunners/screen/badge_screen.dart';
 
+import 'level_guide_screen.dart';
+
 class UserPageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -108,7 +110,13 @@ class UserBody extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: 16),
-                Expanded(
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LevelGuideScreen()),
+                    );
+                  },
                   child: RoundedShadowBox(
                     height: 80, // 원하시는 높이
                     child: Column(
@@ -133,11 +141,11 @@ class UserBody extends StatelessWidget {
                               size: 34,
                               color: Colors.black,
                             ),
-                            SizedBox(width: 8),
+                            SizedBox(width: 16),
                             Text(
                               'Beginner',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 20,
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w600,
                                 color: Colors.black,

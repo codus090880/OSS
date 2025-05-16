@@ -6,9 +6,11 @@ import 'package:prunners/screen/course_recommended_screen.dart';
 import 'package:prunners/screen/course_screen.dart';
 import 'package:prunners/screen/evaluate_screen.dart';
 import 'package:prunners/screen/home_screen.dart';
+import 'package:prunners/screen/level_guide_screen.dart';
 import 'package:prunners/screen/login_screen.dart';
 import 'package:prunners/screen/profile_screen.dart';
 import 'package:prunners/screen/read_review_screen.dart';
+import 'package:prunners/screen/reset_password_screen.dart';
 import 'package:prunners/screen/runningtype_select_screen.dart';
 import 'package:prunners/screen/signup_screen.dart';
 import 'package:prunners/screen/together_screen.dart';
@@ -33,6 +35,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   AuthRepository.initialize(
     appKey: dotenv.env['KAKAO_JS_KEY']!,
   );
@@ -107,6 +110,8 @@ class MyApp extends StatelessWidget {
         '/course_detail': (_) => CourseScreen(),
         '/addrunningmate': (_) => AddRunningmate(),
         '/runningscreen' : (_) => RunningScreen(),
+        '/levelguide': (_) => LevelGuideScreen(),
+        '/reset': (_) => ResetPasswordScreen(),
       },
     );
   }
