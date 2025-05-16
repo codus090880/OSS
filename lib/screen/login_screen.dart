@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await dio.post(
-        'http://127.0.0.1:8000/login/',
+        'http://172.20.10.6:8000/api/token/',
         data: {
           'email': email,
           'password': password,
@@ -45,6 +45,8 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
 
+      print('[DEBUG] 응답 수신: ${response.statusCode}');
+      print('[DEBUG] 응답 데이터: ${response.data}');
       if (response.statusCode == 200) {
         final accessToken = response.data['access'];
         final refreshToken = response.data['refresh'];
@@ -64,6 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } on DioException catch (e) {
+      print('[DEBUG] Dio 오류 타입: ${e.type}');
+      print('[DEBUG] Dio 오류 메시지: ${e.message}');
+      print('[DEBUG] Dio 요청 URL: ${e.requestOptions.uri}');
+      print('[DEBUG] Dio 응답 데이터: ${e.response?.data}');
       if (e.response?.statusCode == 401) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('이메일 또는 비밀번호가 올바르지 않습니다')),

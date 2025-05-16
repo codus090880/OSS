@@ -69,8 +69,8 @@ class _SignupScreenState extends State<SignupScreen> {
         },
       );
 
-      //print('[DEBUG] 응답 코드: ${response.statusCode}');
-      //print('[DEBUG] 응답 데이터: ${response.data}');
+      print('[DEBUG] 응답 코드: ${response.statusCode}');
+      print('[DEBUG] 응답 데이터: ${response.data}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(

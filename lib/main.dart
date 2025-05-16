@@ -18,6 +18,7 @@ import 'package:prunners/screen/setting.dart';
 import 'package:prunners/screen/matching_screen.dart';
 import 'package:prunners/screen/record_screen.dart';
 import 'package:prunners/screen/after_matching.dart';
+import 'package:prunners/screen/running_screen.dart';
 import 'package:prunners/screen/chat_screen.dart';
 import 'package:prunners/screen/badge_screen.dart';
 import 'package:prunners/screen/add_runningmate.dart';
@@ -25,10 +26,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:prunners/model/push.dart';
 import 'package:prunners/model/auth_service.dart';
+import 'package:kakao_map_plugin/kakao_map_plugin.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AuthRepository.initialize(
+    appKey: dotenv.env['KAKAO_JS_KEY']!,
+  );
   await initializeDateFormatting('ko_KR', null);
   await PushNotificationService.initialize();
   AuthService.setupInterceptor();
@@ -99,8 +106,8 @@ class MyApp extends StatelessWidget {
         '/course': (_) => CourseRecommendedScreen(),
         '/course_detail': (_) => CourseScreen(),
         '/addrunningmate': (_) => AddRunningmate(),
+        '/runningscreen' : (_) => RunningScreen(),
       },
-      home: HomeScreen(),
     );
   }
 }

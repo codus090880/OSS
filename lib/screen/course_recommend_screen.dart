@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 
-class CourseRecommendScreen extends StatefulWidget {
-  const CourseRecommendScreen({super.key});
+class CourseRecommendScreenf extends StatefulWidget {
+  const CourseRecommendScreenf({super.key});
 
   @override
-  State<CourseRecommendScreen> createState() => _CourseRecommendScreen();
+  State<CourseRecommendScreenf> createState() => _CourseRecommendScreen();
 }
 
-class _CourseRecommendScreen extends State<CourseRecommendScreen> {
+class _CourseRecommendScreen extends State<CourseRecommendScreenf> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -3,6 +3,7 @@ import 'package:workmanager/workmanager.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -13,7 +14,7 @@ void callbackDispatcher() {
   });
 }
 
-const String WEATHER_API_KEY = '';
+final String WEATHER_API_KEY = dotenv.env['WEATHER_API_KEY']!;
 const String WEATHER_API_URL = 'https://api.openweathermap.org/data/2.5/weather';
 const String AIR_POLLUTION_API_URL = 'https://api.openweathermap.org/data/2.5/air_pollution';
 
