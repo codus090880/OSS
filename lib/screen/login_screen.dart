@@ -34,6 +34,18 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = idController.text.trim();
     final password = passwordController.text.trim();
 
+    if (email == '1234' && password == '1234') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('디버깅용 로그인 성공!')),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => HomeScreen()),
+      );
+      return;
+    }
+
     try {
       final response = await dio.post(
         'http://172.20.10.6:8000/api/token/',

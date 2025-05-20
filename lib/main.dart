@@ -25,12 +25,13 @@ import 'package:prunners/screen/chat_screen.dart';
 import 'package:prunners/screen/badge_screen.dart';
 import 'package:prunners/screen/add_runningmate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:workmanager/workmanager.dart';
 import 'package:prunners/model/push.dart';
 import 'package:prunners/model/auth_service.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'package:prunners/model/local_manager.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 
 void main() async {
@@ -40,30 +41,19 @@ void main() async {
     appKey: dotenv.env['KAKAO_JS_KEY']!,
   );
   await initializeDateFormatting('ko_KR', null);
+  //await LocalManager.initialize();
+  tz.initializeTimeZones();
+  tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
   await PushNotificationService.initialize();
   AuthService.setupInterceptor();
-
-  Workmanager().initialize(callbackDispatcher, isInDebugMode: false,);
 
   final prefs = await SharedPreferences.getInstance();
   final enabled = prefs.getBool('pushEnabled') ?? false;
   if (enabled) {
-    Workmanager().registerOneOffTask(
-      'testOnce',
-      'weatherTask',
-      initialDelay: Duration(seconds: 5),
-    );
+    await PushNotificationService.scheduleOneTimeNotificationAt1240();
   }
   final isLoggedIn = await AuthService.isLoggedIn();
   runApp(MyApp(loggedIn: isLoggedIn));
-}
-
-Duration _calculateDelayUntil(int hour, int minute) {
-  final now = DateTime.now();
-  final target = DateTime(now.year, now.month, now.day, hour, minute);
-  return now.isAfter(target)
-      ? target.add(Duration(days: 1)).difference(now)
-      : target.difference(now);
 }
 
 class MyApp extends StatelessWidget {

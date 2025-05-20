@@ -6,8 +6,10 @@ import 'package:prunners/widget/rounded_shadow_box.dart';
 import 'package:prunners/screen/profile_screen.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:prunners/model/push.dart';
+import 'package:prunners/model/local_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:prunners/screen/login_screen.dart';
+import 'package:prunners/screen/chat_screen.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class Setting extends StatefulWidget {
@@ -19,6 +21,10 @@ class Setting extends StatefulWidget {
 
 class _SettingState extends State<Setting> {
   bool _pushEnabled = false;
+
+  String? _nickname;
+  String? _profileUrl;
+  bool _isProfileLoading = true;
 
   final List<_MenuItem> _menuItems = const [
     _MenuItem(icon: Icons.person_outline, label: '프로필 설정'),
@@ -32,17 +38,26 @@ class _SettingState extends State<Setting> {
   @override
   void initState() {
     super.initState();
+    _loadProfileFromPrefs();
     _loadPushSetting();
+  }
+
+
+  Future<void> _loadProfileFromPrefs() async {
+    final name = await LocalManager.getNickname();
+    final url = await LocalManager.getProfileUrl();
+    setState(() {
+      _nickname = name;
+      _profileUrl = url;
+      _isProfileLoading = false;
+    });
   }
 
   Future<void> _loadPushSetting() async {
     final prefs = await SharedPreferences.getInstance();
     final enabled = prefs.getBool('pushEnabled') ?? false;
     setState(() => _pushEnabled = enabled);
-
-    if (_pushEnabled) {
-      _registerWeatherTask();
-    }
+    if (_pushEnabled) _registerWeatherTask();
   }
 
   Future<void> _registerWeatherTask() async {
@@ -76,10 +91,26 @@ class _SettingState extends State<Setting> {
               width: double.infinity,
               child: Row(
                 children: [
-                  Icon(Icons.account_circle, size: 48, color: Colors.grey),
+                  _isProfileLoading
+                      ? SizedBox(
+                    width: 48, height: 48,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                      : (_profileUrl != null
+                      ? ClipOval(
+                    child: Image.network(
+                      _profileUrl!,
+                      width: 48, height: 48,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                      : Icon(Icons.account_circle, size: 48, color: Colors.grey)
+                  ),
                   SizedBox(width: 12),
                   Text(
-                    '사용자',
+                    _isProfileLoading
+                        ? '불러오는 중...'
+                        : (_nickname ?? '사용자'),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -99,13 +130,10 @@ class _SettingState extends State<Setting> {
                 children: List.generate(
                   _menuItems.length * 2 - 1,
                       (i) {
-                    if (i.isOdd) {
-                      return Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Colors.black.withOpacity(0.1),
-                      );
-                    }
+                    if (i.isOdd) return Divider(
+                      height: 1, thickness: 1,
+                      color: Colors.black.withOpacity(0.1),
+                    );
                     final item = _menuItems[i ~/ 2];
                     return _buildMenuRow(item);
                   },
@@ -139,21 +167,14 @@ class _SettingState extends State<Setting> {
         value: _pushEnabled,
         onChanged: (v) async {
           setState(() => _pushEnabled = v);
-
           final prefs = await SharedPreferences.getInstance();
           prefs.setBool('pushEnabled', v);
-
-          if (v) {
-            _registerWeatherTask();
-          } else {
-            _cancelWeatherTask();
-          }
+          if (v) _registerWeatherTask(); else _cancelWeatherTask();
         },
       );
     } else {
       trailing = Icon(
-        Icons.arrow_forward_ios,
-        size: 16,
+        Icons.arrow_forward_ios, size: 16,
         color: Colors.black.withOpacity(0.7),
       );
     }
@@ -165,13 +186,18 @@ class _SettingState extends State<Setting> {
             context,
             MaterialPageRoute(builder: (_) => ProfileScreen()),
           );
-        }
-        else if (item.label == '로그아웃') {
-          logout(context);
         } else if (item.label == '비밀번호 변경') {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => ResetPasswordScreen()),
+          );
+        } else if (item.label == '로그아웃') {
+          logout(context);
+        }
+        else if (item.label == '회원탈퇴') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ChatScreen()),
           );
         }
       },
@@ -183,11 +209,9 @@ class _SettingState extends State<Setting> {
             Icon(item.icon, size: 20, color: Colors.black),
             SizedBox(width: 12),
             Expanded(
-              child: Text(
-                item.label,
+              child: Text(item.label,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
+                  fontSize: 16, fontWeight: FontWeight.w400,
                   color: Colors.black,
                 ),
               ),
@@ -206,11 +230,13 @@ class _MenuItem {
   const _MenuItem({required this.icon, required this.label});
 }
 
+// 로그아웃 함수
 Future<void> logout(BuildContext context) async {
   final storage = FlutterSecureStorage();
   await storage.delete(key: 'ACCESS_TOKEN');
   await storage.delete(key: 'REFRESH_TOKEN');
-
+  await SharedPreferences.getInstance()
+       .then((prefs) => prefs.clear());
   Navigator.pushAndRemoveUntil(
     context,
     MaterialPageRoute(builder: (_) => LoginScreen()),

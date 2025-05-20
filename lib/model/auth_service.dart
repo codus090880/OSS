@@ -4,8 +4,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService {
   static final FlutterSecureStorage storage = FlutterSecureStorage();
-  static final Dio dio = Dio();       // 일반 API 요청용
-  static final Dio authDio = Dio();   // 토큰 재발급 요청용
+  static final Dio dio = Dio(BaseOptions(
+    baseUrl: 'http://192.168.0.100:8000',
+  ));
+
+  static final Dio authDio = Dio(BaseOptions(
+    baseUrl: 'http://192.168.0.100:8000',
+  ));
 
 
   static DateTime? getTokenExpiration(String token) {
@@ -41,7 +46,7 @@ class AuthService {
 
     try {
       final response = await authDio.post(
-        'http://127.0.0.1:8000/token/refresh/',
+        '/api/token/',
         options: Options(headers: {
           'Authorization': 'Bearer $refreshToken',
         }),

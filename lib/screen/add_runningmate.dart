@@ -3,21 +3,19 @@ import 'package:dio/dio.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/grey_box.dart';
+import 'package:prunners/model/auth_service.dart';
 
 class RunningMate {
   final String nickname;
   final String imageUrl;
-  final int userId;
 
   RunningMate({
-    required this.userId,
     required this.nickname,
     required this.imageUrl,
   });
 
   factory RunningMate.fromJson(Map<String, dynamic> json) {
     return RunningMate(
-      userId: json['id'],
       nickname: json['nickname'],
       imageUrl: json['profile_url'],
     );
@@ -31,15 +29,7 @@ class AddRunningmate extends StatefulWidget {
 
 class _AddRunningmateState extends State<AddRunningmate> {
   final TextEditingController _controller = TextEditingController();
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'http://172.20.10.6:8000',
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
-    headers: {
-      'content-type': 'application/json',
-      'accept': 'application/json',
-    },
-  ));
+  final Dio _dio = AuthService.dio;  // 인터셉터 적용된 dio
   List<RunningMate> _results = [];
   bool _isLoading = false;
 
@@ -65,9 +55,10 @@ class _AddRunningmateState extends State<AddRunningmate> {
     });
 
     try {
-      final resp = await _dio.get('/search_mates/', queryParameters: {
-        'q': query,
-      });
+      final resp = await _dio.get(
+        '/search_mates/',
+        queryParameters: {'q': query},
+      );
       final data = resp.data as List;
       setState(() {
         _results = data
@@ -83,14 +74,15 @@ class _AddRunningmateState extends State<AddRunningmate> {
     }
   }
 
-  Future<void> _addFriend(int userId) async {
+  Future<void> _addFriend(String friendNickname) async {
     try {
-      final resp = await _dio.post('/add_friend/', data: {
-        'friend_id': userId,
-      });
+      final resp = await _dio.post(
+        '/add_friend/',
+        data: {'friend_nickname': friendNickname},
+      );
       if (resp.statusCode == 200) {
         setState(() {
-          _results.removeWhere((m) => m.userId == userId);
+          _results.removeWhere((m) => m.nickname == friendNickname);
         });
       } else {
         throw Exception('status ${resp.statusCode}');
@@ -104,7 +96,6 @@ class _AddRunningmateState extends State<AddRunningmate> {
 
   @override
   Widget build(BuildContext context) {
-    final hasText = _controller.text.isNotEmpty;
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(60),
@@ -118,7 +109,6 @@ class _AddRunningmateState extends State<AddRunningmate> {
             GreyBox(
               child: Row(
                 children: [
-                  // 원래 스타일 유지 + 탭 시 _search() 호출
                   GestureDetector(
                     onTap: _search,
                     child: Icon(Icons.search, color: Color(0xFF8390A1)),
@@ -191,7 +181,6 @@ class _AddRunningmateState extends State<AddRunningmate> {
                     ),
                     child: Row(
                       children: [
-                        // 프로필 이미지
                         ClipRRect(
                           borderRadius: BorderRadius.circular(28),
                           child: Image.network(
@@ -202,7 +191,6 @@ class _AddRunningmateState extends State<AddRunningmate> {
                           ),
                         ),
                         SizedBox(width: 12),
-                        // 닉네임
                         Expanded(
                           child: Text(
                             mate.nickname,
@@ -213,10 +201,9 @@ class _AddRunningmateState extends State<AddRunningmate> {
                             ),
                           ),
                         ),
-                        // 친구 추가 버튼
                         IconButton(
                           icon: Icon(Icons.person_add),
-                          onPressed: () => _addFriend(mate.userId),
+                          onPressed: () => _addFriend(mate.nickname),
                         ),
                       ],
                     ),
@@ -234,10 +221,9 @@ class _AddRunningmateState extends State<AddRunningmate> {
           onTap: (index) {
             const routes = ['/home', '/running', '/course', '/profile'];
             Navigator.pushReplacementNamed(
-                context,
-                index == 3
-                    ? '/profile'
-                    : routes[index]);
+              context,
+              index == 3 ? '/profile' : routes[index],
+            );
           },
         ),
       ),

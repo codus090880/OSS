@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:prunners/widget/button_box.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/grey_box.dart';
+import 'package:prunners/model/local_manager.dart';
 
 enum Gender { male, female }
 
@@ -218,6 +219,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               );
               if (saveResponse.statusCode == 201 || saveResponse.statusCode == 200) {
+                await LocalManager.setNickname(nickname);
+                await LocalManager.setGender(gender);
+                await LocalManager.setAge(parsedAge);
+                await LocalManager.setHeight(parsedHeight);
+                await LocalManager.setWeight(parsedWeight);
+                await LocalManager.setLevel(selectedLevel!);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('프로필 저장 완료')),
                 );

@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class ChatBox extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
+  final VoidCallback? onAdd;
 
   const ChatBox({
     Key? key,
     required this.controller,
     required this.onSend,
+    this.onAdd,
   }) : super(key: key);
 
   @override
@@ -29,9 +31,7 @@ class ChatBox extends StatelessWidget {
             ),
             child: IconButton(
               icon: Icon(Icons.add, size: 24, color: Colors.black54),
-              onPressed: () {
-                // TODO: 이미지 첨부 기능
-              },
+              onPressed: onAdd,
             ),
           ),
 

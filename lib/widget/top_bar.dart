@@ -25,16 +25,20 @@ class TopBar extends StatelessWidget {
 }
 
 class CustomTopBar extends StatelessWidget implements PreferredSizeWidget {
-  final String title;
+  final String? title;
+  final Widget? titleWidget;
   final IconData? rightIcon;
   final VoidCallback? onRightPressed;
 
   const CustomTopBar({
     Key? key,
-    required this.title,
+    this.title,
     this.rightIcon,
+    this.titleWidget,
     this.onRightPressed,
-  }) : super(key: key);
+  }) : assert(title != null || titleWidget != null,
+  'title 또는 titleWidget 중 하나는 반드시 제공해야 합니다'),
+        super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -59,8 +63,8 @@ class CustomTopBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           Expanded(
             child: Center(
-              child: Text(
-                title,
+              child: titleWidget ?? Text(
+                title!,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 25,
