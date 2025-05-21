@@ -2,6 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/top_bar.dart';
 
+class Course {
+  final int id;
+  final String title;
+  final String distance;
+  final String imageUrl;
+
+  Course({
+    required this.id,
+    required this.title,
+    required this.distance,
+    required this.imageUrl,
+  });
+
+  factory Course.fromJson(Map<String, dynamic> json) {
+    return Course(
+      id: json['id'],
+      title: json['title'],
+      distance: json['distance'],
+      imageUrl: json['image_url'],
+    );
+  }
+}
+
 class CourseRecommendedScreen extends StatefulWidget {
   const CourseRecommendedScreen({super.key});
 
@@ -13,47 +36,69 @@ class _CourseRecommendedScreenState extends State<CourseRecommendedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomTopBar(title: '코스 추천'),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(60),
+        child: CustomTopBar(title: '코스 추천'),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('내 주변 러닝 코스', style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                CourseCard(title: '러닝 코스 1', distance: '3.5 km', imagePath: 'assets/111.png'),
-                CourseCard(title: '러닝 코스 2', distance: '3.5 km', imagePath: 'assets/111.png'),
-              ],
-            ),
-            const SizedBox(height: 50),
-            const Text('이번주 인기 러닝 코스', style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CourseCard(title: '러닝 코스 3', distance: '5 km', imagePath: 'assets/111.png'),
-                CourseCard(title: '러닝 코스 4', distance: '5 km', imagePath: 'assets/111.png'),
-                CourseCard(title: '러닝 코스 5', distance: '5 km', imagePath: 'assets/111.png'),
-              ],
-            ),
-          ],
-        )
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('내 주변 러닝 코스', style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    CourseCard(title: '러닝 코스 1', distance: '3.5 km', imagePath: 'assets/111.png'),
+                    SizedBox(width: 12),
+                    CourseCard(title: '러닝 코스 2', distance: '3.5 km', imagePath: 'assets/111.png'),
+                    SizedBox(width: 12),
+                    CourseCard(title: '러닝 코스 3', distance: '5 km', imagePath: 'assets/111.png'),
+                    SizedBox(width: 12),
+                    CourseCard(title: '러닝 코스 4', distance: '5 km', imagePath: 'assets/111.png'),
+                    SizedBox(width: 12),
+                    CourseCard(title: '러닝 코스 5', distance: '5 km', imagePath: 'assets/111.png'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 50),
+              const Text('이번주 인기 러닝 코스', style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    CourseCard(title: '러닝 코스 6', distance: '5 km', imagePath: 'assets/111.png'),
+                    SizedBox(width: 12),
+                    CourseCard(title: '러닝 코스 7', distance: '5 km', imagePath: 'assets/111.png'),
+                    SizedBox(width: 12),
+                    CourseCard(title: '러닝 코스 8', distance: '5 km', imagePath: 'assets/111.png'),
+                    SizedBox(width: 12),
+                    CourseCard(title: '러닝 코스 9', distance: '5 km', imagePath: 'assets/111.png'),
+                    SizedBox(width: 12),
+                    CourseCard(title: '러닝 코스 10', distance: '5 km', imagePath: 'assets/111.png'),
+                    SizedBox(width: 12),
+                    CourseCard(title: '러닝 코스 11', distance: '5 km', imagePath: 'assets/111.png'),
+                  ],
+                ),
+              ),
+            ],
+          )
       ),
       bottomNavigationBar: SafeArea(
-      top: false,
-      child: BottomNavBar(
-        currentIndex: 2, // 코스 탭 인덱스
-        onTap: (index) {
-          Navigator.pushReplacementNamed(
-            context,
-            ['/home', '/running', '/course', '/profile'][index],
-          );
-        },
+        top: false,
+        child: BottomNavBar(
+          currentIndex: 2, // 코스 탭 인덱스
+          onTap: (index) {
+            Navigator.pushReplacementNamed(
+              context,
+              ['/home', '/running', '/course', '/profile'][index],
+            );
+          },
+        ),
       ),
-    ),
     );
   }
 }
@@ -97,4 +142,3 @@ class CourseCard extends StatelessWidget {
     );
   }
 }
-

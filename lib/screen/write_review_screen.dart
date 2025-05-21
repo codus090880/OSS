@@ -17,7 +17,10 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
 
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomTopBar(title: '코스 리뷰 작성'),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(60),
+        child: CustomTopBar(title: '코스 리뷰 작성'),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),

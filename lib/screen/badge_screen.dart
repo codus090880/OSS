@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:prunners/widget/rounded_shadow_box.dart';
 import 'package:prunners/widget/bottom_bar.dart';
+import 'package:prunners/widget/top_bar.dart';
+
 
 class Badge {
   final String id;
@@ -37,18 +39,9 @@ class _BadgeScreenState extends State<BadgeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          '나의 뱃지',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 25,
-            color: Colors.black,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(60),
+        child: CustomTopBar(title: '나의 뱃지'),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),

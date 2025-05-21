@@ -14,7 +14,10 @@ class _CourseScreen extends State<CourseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomTopBar(title: '러닝 코스 1'),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(60),
+        child: CustomTopBar(title: '러닝 코스 1'),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -44,14 +47,14 @@ class _CourseScreen extends State<CourseScreen> {
             ),
             const SizedBox(height: 165),
             SizedBox(
-              width: double.infinity,
-              child: OutlinedButtonBox(
-                text: '리뷰 보러가기',
-                onPressed: () {
-                  Navigator.pushNamed(context, '/read');
-                },
-                fontSize: 15,
-              )
+                width: double.infinity,
+                child: OutlinedButtonBox(
+                  text: '리뷰 보러가기',
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/read');
+                  },
+                  fontSize: 15,
+                )
             )
           ],
         ),

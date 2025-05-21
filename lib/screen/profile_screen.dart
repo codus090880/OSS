@@ -32,7 +32,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomTopBar(title: '프로필 설정'),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(60),
+        child: CustomTopBar(title: '프로필 설정'),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
