@@ -15,7 +15,12 @@ class PushNotificationService {
   static Future<void> initialize() async {
     tz.initializeTimeZones();
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidInit);
+    const iosInit = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
     await _plugin.initialize(initSettings);
 
     if (await Permission.notification.isDenied) {
@@ -39,7 +44,11 @@ class PushNotificationService {
 
   static Future<void> initializeBackground() async {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidInit);
+    const iosInit = DarwinInitializationSettings();
+    const initSettings = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
     await _plugin.initialize(initSettings);
   }
 
