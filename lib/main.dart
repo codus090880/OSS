@@ -78,7 +78,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black),
         ),
       ),
-      initialRoute: '/evaluate',
+      initialRoute: loggedIn ? '/home' : '/login',
       routes: {
         '/home': (_) => HomeScreen(),
         '/login': (_) => LoginScreen(),
