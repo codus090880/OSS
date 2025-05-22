@@ -3,13 +3,14 @@ import 'package:prunners/model/auth_service.dart';
 
 class LocalManager {
   // 1) SharedPreferences 키 상수 정리
-  static const _kNickname   = 'nickname';
-  static const _kProfileUrl = 'profile_url';
-  static const _kLevel      = 'level';
-  static const _kGender     = 'gender';
-  static const _kAge        = 'age';
-  static const _kHeight     = 'height';
-  static const _kWeight     = 'weight';
+  static const _kNickname     = 'nickname';
+  static const _kProfileUrl   = 'profile_url';
+  static const _kLevel        = 'level';
+  static const _kGender       = 'gender';
+  static const _kAge          = 'age';
+  static const _kHeight       = 'height';
+  static const _kWeight       = 'weight';
+  static const _kPreferGender = 'preferGender';
 
   /// 앱 기동 시 한 번만 호출.
   /// 로컬에 빠진 키가 있으면 서버에서 한 번에 받아와 캐싱.
@@ -25,6 +26,7 @@ class LocalManager {
       _kAge,
       _kHeight,
       _kWeight,
+      _kPreferGender,
     ].where((key) => prefs.get(key) == null).toList();
 
     if (needs.isEmpty) return;
@@ -68,6 +70,9 @@ class LocalManager {
     }
     if (needs.contains(_kWeight) && data['weight'] != null) {
       await prefs.setDouble(_kWeight, (data['weight'] as num).toDouble());
+    }
+    if (needs.contains(_kPreferGender) && data['preferGender'] != null) {
+      await prefs.setString(_kPreferGender, data['preferGender'] as String);
     }
   }
 
@@ -134,5 +139,13 @@ class LocalManager {
   static Future<void> setWeight(double v) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_kWeight, v);
+  }
+  static Future<String> getPreferGender() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kPreferGender) ?? 'any';
+  }
+  static Future<void> setPreferGender(String v) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kPreferGender, v);
   }
 }

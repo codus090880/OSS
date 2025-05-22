@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:prunners/screen/agree_screen.dart';
 import 'package:prunners/screen/alone_screen.dart';
+import 'package:prunners/screen/course_notify_screen.dart';
 import 'package:prunners/screen/course_recommended_screen.dart';
 import 'package:prunners/screen/course_screen.dart';
 import 'package:prunners/screen/evaluate_screen.dart';
 import 'package:prunners/screen/home_screen.dart';
 import 'package:prunners/screen/level_guide_screen.dart';
 import 'package:prunners/screen/login_screen.dart';
+import 'package:prunners/screen/mate_notify_screen.dart';
 import 'package:prunners/screen/profile_screen.dart';
 import 'package:prunners/screen/read_review_screen.dart';
 import 'package:prunners/screen/reset_password_screen.dart';
@@ -76,7 +78,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black),
         ),
       ),
-      initialRoute: loggedIn ? '/home' : '/login',
+      initialRoute: '/evaluate',
       routes: {
         '/home': (_) => HomeScreen(),
         '/login': (_) => LoginScreen(),
@@ -102,6 +104,8 @@ class MyApp extends StatelessWidget {
         '/runningscreen' : (_) => RunningScreen(),
         '/levelguide': (_) => LevelGuideScreen(),
         '/reset': (_) => ResetPasswordScreen(),
+        '/course_notify': (_) => CourseNotifyScreen(),
+        '/mate_notify': (_) => MateNotifyScreen(),
       },
     );
   }
