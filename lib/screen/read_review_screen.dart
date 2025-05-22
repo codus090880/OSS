@@ -1,17 +1,19 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:prunners/screen/course_notify_screen.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:intl/intl.dart';
 
 class Review {
-  final String username;
+  final String nickname;
   final int rating;
   final String comment;
   final List<String> imgs;
   final DateTime date;
 
   Review({
-    required this.username,
+    required this.nickname,
     required this.rating,
     required this.comment,
     required this.imgs,
@@ -29,24 +31,58 @@ class ReadReviewScreen extends StatefulWidget {
 class _ReadReviewScreenState extends State<ReadReviewScreen> {
   List<Review> reviews = [];
   String sortType = '최신순';
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    reviews = getMockData();
+    // reviews = getMockData();
+    fetchReviews();
   }
 
+  Future<void> fetchReviews() async {
+    final dio = Dio();
+    setState(() {
+      isLoading = true;
+    });
+    try {
+      final response = await dio.get('http://127.0.0.1:8000/course/1/reviews/');
+      if(response.statusCode == 200) {
+        final List<dynamic> jsonData = response.data;
+        setState(() {
+          reviews = jsonData.map((e) => Review(
+            nickname: e['nickname'] ?? '알 수 없음',
+            rating: e['rating'] ?? 0,
+            comment: e['comment'] ?? '',
+            imgs: List<String>.from(e['images'] ?? []),
+            date: DateTime.parse(e['date']),
+          )).toList();
+        });
+      }
+    } catch(e) {
+      print('리뷰 불러오기 실패: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('리뷰 불러오기에 실패했어요. 잠시 후 다시 시도해주세요.')),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  /*
   List<Review> getMockData() {
     return [
       Review(
-        username: '홍길동',
+        nickname: '홍길동',
         rating: 5,
         comment: '사람도 별로 없고 경치가 이쁘네요 추천합니다',
         imgs: ['img1.png', 'img2.png', 'img3.png'],
         date: DateTime(2025, 5, 7),
       ),
       Review(
-        username: '김철수',
+        nickname: '김철수',
         rating: 1,
         comment: '별로네요',
         imgs: [],
@@ -54,6 +90,7 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
       ),
     ];
   }
+   */
 
   void sortReviews(String type) {
     setState(() {
@@ -99,7 +136,15 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
                 ),
               ),
               Expanded(
-                child: ListView.separated(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator()) : reviews.isEmpty
+                    ? const Center(
+                  child: Text(
+                    '아직 등록된 리뷰가 없습니다.',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                ): ListView.separated(
                   padding: const EdgeInsets.all(20),
                   itemCount: reviews.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 30),
@@ -118,7 +163,7 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    review.username,
+                                    review.nickname,
                                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                                   ),
                                   Row(
@@ -140,7 +185,10 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
                             const Spacer(),
                             TextButton(
                               onPressed: () {
-                                // 신고 처리 로직
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => CourseNotifyScreen()),
+                                );
                               },
                               child: const Text(
                                 '신고하기',
@@ -168,11 +216,12 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
                             children: review.imgs.map((img) {
                               return Padding(
                                 padding: const EdgeInsets.only(right: 5),
-                                child: Container(
+                                child: Image.network(
+                                  img,
                                   width: 70,
                                   height: 70,
-                                  color: Colors.grey[300],
-                                  child: const Icon(Icons.camera_alt_outlined, size: 30),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
                                 ),
                               );
                             }).toList(),

@@ -1,7 +1,11 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
 import 'package:prunners/widget/bottom_bar.dart';
+import '../model/local_manager.dart';
 
 class WriteReviewScreen extends StatefulWidget {
   const WriteReviewScreen({super.key});
@@ -13,7 +17,69 @@ class WriteReviewScreen extends StatefulWidget {
 class _WriteReviewScreenState extends State<WriteReviewScreen> {
   @override
   int rating = 0;
+  List<XFile> selectedImages = [];
   final TextEditingController reviewController = TextEditingController();
+  final ImagePicker picker = ImagePicker(); // 이미지 선택 기능 제공
+
+  Future<void> pickImages() async {
+    final List<XFile> picked = await picker.pickMultiImage(); // 갤러리에서 여러 장 선택
+    if (picked.isNotEmpty) {
+      setState(() {
+        selectedImages = picked;
+      });
+    }
+  }
+
+  Future<void> submitReview() async {
+    final String content = reviewController.text.trim();
+
+    if(rating == 0 || content.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('별점과 리뷰 내용을 모두 입력해주세요')),
+      );
+      return;
+    }
+    final dio = Dio();
+    try {
+      final String nickname = await LocalManager.getNickname();
+
+      final imageFiles = await Future.wait(
+        // 실제 파일 경로를 읽어 multipart 파일 생성(서버 전송 위함)
+        selectedImages.map(
+              (img) => MultipartFile.fromFile(img.path, filename: img.name),
+        ),
+      );
+
+      // FormData는 multipart/form-data HTTP 요청에 사용되는 형식
+      final formData = FormData.fromMap({
+        'nickname': nickname,
+        'course_id': 42,
+        'rating': rating,
+        'content': content,
+        'images': imageFiles,
+      });
+
+      final response = await dio.post(
+        'http://127.0.0.1:8000/reviews/',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('리뷰가 등록되었습니다')),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('등록 실패: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류 발생: $e')),
+      );
+    }
+  }
 
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,9 +119,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                           minimumSize: Size(0, 0),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        onPressed: () {
-                          // 사진 첨부 로직
-                        },
+                        onPressed: pickImages,
                         child: const Text(
                           '사진 첨부',
                           style: TextStyle(fontSize: 12, color: Colors.black),
@@ -65,6 +129,20 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              if (selectedImages.isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: selectedImages.map((img) {
+                    return Image.file(
+                      File(img.path),
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    );
+                  }).toList(),
+                ),
               const SizedBox(height: 10),
               Row(
                 children: List.generate(5, (index) {
@@ -105,9 +183,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
               const SizedBox(height: 30),
               OutlinedButtonBox(
                 text: '등록하기',
-                onPressed: () {
-                  // 등록 로직 처리 백엔드 연동
-                },
+                onPressed: submitReview,
               ),
             ],
           ),

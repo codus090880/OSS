@@ -1,6 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:prunners/screen/mate_notify_screen.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
 import 'package:prunners/widget/bottom_bar.dart';
+import 'package:dio/dio.dart';
+import '../model/local_manager.dart';
+
+class MateEvaluationTarget {
+  final String nickname;
+  final int sessionId;
+
+  MateEvaluationTarget({
+    required this.nickname,
+    required this.sessionId,
+  });
+
+  factory MateEvaluationTarget.fromJson(Map<String, dynamic> json) {
+    return MateEvaluationTarget(
+      nickname: json['nickname'],
+      sessionId: json['session_id'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'nickname': nickname,
+      'session_id': sessionId,
+    };
+  }
+}
 
 class EvaluateScreen extends StatefulWidget {
   const EvaluateScreen({super.key});
@@ -10,9 +37,17 @@ class EvaluateScreen extends StatefulWidget {
 }
 
 class _EvaluateScreenState extends State<EvaluateScreen> {
-  String mateName = '홍길동';
+  // mockData
+  final List<MateEvaluationTarget> mates = [
+    MateEvaluationTarget(nickname: '홍길동', sessionId: 123),
+    MateEvaluationTarget(nickname: '김철수', sessionId: 123),
+    MateEvaluationTarget(nickname: '이영희', sessionId: 123),
+  ];
+
   bool isPositive = true;
   List<String> selectedReasons = [];
+  int currentIndex = 0;
+  MateEvaluationTarget get currentMate => mates[currentIndex];
 
   List<String> positiveReasons = [
     '시간 약속을 잘 지켰어요',
@@ -29,6 +64,61 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
     '러닝 스타일이 많이 달랐어요',
     '불편하거나 무례하게 느껴졌어요',
   ];
+
+  /*
+  {
+  "target": "홍길동", "김철수", "이영희",
+  "evaluator": "김땡떙",
+  "session_id": 123,
+  "reasons": ["시간 약속을 잘 지켰어요", "매너가 좋아요"],
+  "score": 1
+  }
+ */
+
+
+  Future<void> submitEvaluation() async {
+    if(selectedReasons.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('사유를 한 가지 이상 선택해주세요')),
+      );
+      return;
+    }
+    final dio = Dio();
+    try {
+      final evaluator = await LocalManager.getNickname();
+
+      final response = await dio.post(
+        'http://127.0.0.1:8000/evaluate/',
+        data: {
+          'target': currentMate.nickname,
+          'evaluator': evaluator,
+          'session_id': currentMate.sessionId,
+          'reasons': selectedReasons,
+          'score': isPositive ? 1 : -1,
+        },
+        options: Options(contentType: 'application/json'),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (currentIndex < mates.length - 1) {
+          setState(() {
+            currentIndex += 1;
+            selectedReasons.clear();
+            isPositive = true;
+          });
+        } else {
+          // 마지막 사람까지 평가 완료
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('모든 메이트 평가가 완료되었습니다')),
+          );
+          Navigator.pop(context); // 또는 홈으로 이동
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류 발생: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +137,10 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
         actions: [
           IconButton(
               onPressed: () {
-                // 신고 로직
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => MateNotifyScreen()),
+                );
               },
               icon: Icon(
                 Icons.notifications_none,
@@ -89,7 +182,7 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                mateName,
+                currentMate.nickname,
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -178,9 +271,7 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
               const SizedBox(height: 10),
               OutlinedButtonBox(
                 text: '제출하기',
-                onPressed: () {
-                  // 제출 내용 검증, 저장 로직
-                },
+                onPressed: submitEvaluation,
               ),
             ],
           ),
