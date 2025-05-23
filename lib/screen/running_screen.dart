@@ -1,5 +1,6 @@
 // lib/screen/running_screen.dart
-
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:prunners/widget/running_controller.dart';
@@ -15,6 +16,7 @@ class RunningScreen extends StatefulWidget {
 class _RunningScreenState extends State<RunningScreen> {
   late final RunningController _controller;
   KakaoMapController? _mapController;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -31,6 +33,29 @@ class _RunningScreenState extends State<RunningScreen> {
   void dispose() {
     _controller.stop();
     super.dispose();
+  }
+
+
+  Future<void> _onCameraTap() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.camera,
+      preferredCameraDevice: CameraDevice.rear,
+      imageQuality: 80,
+    );
+    if (pickedFile == null) return;
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        content: Image.file(File(pickedFile.path)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('닫기'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -96,6 +121,11 @@ class _RunningScreenState extends State<RunningScreen> {
             elapsedTime: _controller.elapsedTime,
             isRunning: _controller.stopwatch.isRunning,
             onPause: _controller.togglePause,
+            onCamera: _onCameraTap,
+
+            distanceKm: _controller.totalDistance / 1000,
+            calories: _controller.caloriesBurned,
+            paceKmh: _controller.averageSpeed,
           ),
         ],
       ),
