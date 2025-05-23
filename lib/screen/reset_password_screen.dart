@@ -71,7 +71,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               'http://127.0.0.1:8000/send/',
               data: { 'email': email }
           );
-          if(response.statusCode == 200) {
+          if (response.data['success'] == true) {
             startTimer();
             setState(() => step = 2);
           } else {
