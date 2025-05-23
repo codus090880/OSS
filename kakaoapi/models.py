@@ -111,6 +111,20 @@ class ChatMessage(models.Model):
     def __str__(self):
         return f"{self.sender.username}: {self.message[:20]}"
 
+class ChatJoinRequest(models.Model):
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
+    requester = models.ForeignKey(User, on_delete=models.CASCADE)
+    status = models.CharField(max_length=10, choices=[
+        ("pending", "대기"),
+        ("accepted", "수락"),
+        ("rejected", "거절")
+    ], default="pending")
+    requested_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('chat_room', 'requester')
+
+
 
 # 신고 기능
 class Report(models.Model):
