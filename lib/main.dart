@@ -5,6 +5,7 @@ import 'package:prunners/screen/alone_screen.dart';
 import 'package:prunners/screen/course_notify_screen.dart';
 import 'package:prunners/screen/course_recommended_screen.dart';
 import 'package:prunners/screen/course_screen.dart';
+import 'package:prunners/screen/delete_account_screen.dart';
 import 'package:prunners/screen/evaluate_screen.dart';
 import 'package:prunners/screen/home_screen.dart';
 import 'package:prunners/screen/level_guide_screen.dart';
@@ -105,6 +106,7 @@ class MyApp extends StatelessWidget {
         '/reset': (_) => ResetPasswordScreen(),
         '/course_notify': (_) => CourseNotifyScreen(),
         '/mate_notify': (_) => MateNotifyScreen(),
+        '/delete_account': (_) => DeleteAccountScreen(),
       },
     );
   }

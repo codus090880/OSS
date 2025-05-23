@@ -62,7 +62,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
     try {
       final response = await dio.post(
-        'https://37d9-210-94-220-228.ngrok-free.app/signup/',
+        'https://78a4-210-94-220-228.ngrok-free.app/signup/',
         data: {
           'email': email,
           'password': password,

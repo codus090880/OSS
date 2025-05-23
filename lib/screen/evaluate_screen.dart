@@ -70,7 +70,7 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
   "target": "홍길동", "김철수", "이영희",
   "evaluator": "김땡떙",
   "session_id": 123,
-  "reasons": ["시간 약속을 잘 지켰어요", "매너가 좋아요"],
+    "reasons": ["시간 약속을 잘 지켰어요", "매너가 좋아요"],
   "score": 1
   }
  */

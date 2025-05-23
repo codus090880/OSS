@@ -6,6 +6,7 @@ import 'package:prunners/widget/grey_box.dart';
 import 'package:prunners/model/local_manager.dart';
 
 enum Gender { male, female }
+enum PreferGender { male, female, any }
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,14 +17,18 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Gender ?selectValue1;
-
+  PreferGender ?selectValue2;
 
   final Map<Gender, String> labels1 = {
     Gender.male: "남성",
     Gender.female: "여성",
   };
 
-
+  final Map<PreferGender, String> labels2 = {
+    PreferGender.male: "남성",
+    PreferGender.female: "여성",
+    PreferGender.any: "상관없음",
+  };
 
   final List<String> levelOptions = ['Starter', 'Beginner', 'Intermediate', 'Advanced'];
   String? selectedLevel;
@@ -99,13 +104,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                ),
-              ),
-              const SizedBox(height: 10),
               const Text('나이(만)'),
               const SizedBox(height: 10),
               GreyBox(
@@ -183,13 +181,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // 프로필 정보 저장 로직
             final nickname = nicknameController.text.trim();
             final gender = selectValue1 == Gender.male ? 'male' : 'female';
+            final preferGender = selectValue2?.name ?? 'any';
             final age = ageController.text.trim();
             final height = heightController.text.trim();
             final weight = weightController.text.trim();
 
             // 유효성 검사
             if(nickname.isEmpty || age.isEmpty || height.isEmpty || weight.isEmpty
-                || selectValue1 == null || selectedLevel == null) {
+                || selectValue1 == null || selectValue2 == null || selectedLevel == null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('모든 항목을 입력해주세요')),
               );
@@ -227,6 +226,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 data: {
                   'nickname': nickname,
                   'gender' : gender,
+                  'preferGender' : preferGender,
                   'age' : parsedAge,
                   'height': parsedHeight,
                   'weight': parsedWeight,
@@ -243,6 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await LocalManager.setHeight(parsedHeight);
                 await LocalManager.setWeight(parsedWeight);
                 await LocalManager.setLevel(selectedLevel!);
+                await LocalManager.setPreferGender(preferGender);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('프로필 저장 완료')),
                 );
