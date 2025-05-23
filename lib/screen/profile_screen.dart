@@ -104,37 +104,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text('선호 성별(러닝 메이트)'),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: PreferGender.values.map((value) {
-                    return Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            labels2[value]!,
-                            style: const TextStyle(fontSize: 15),
-                          ),
-                          Radio<PreferGender>(
-                            value: value,
-                            groupValue: selectValue2,
-                            onChanged: (PreferGender? newValue) {
-                              setState(() {
-                                selectValue2 = newValue!;
-                              });
-                            },
-                            activeColor: Colors.deepPurple,
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 10),
               const Text('나이(만)'),
               const SizedBox(height: 10),
               GreyBox(

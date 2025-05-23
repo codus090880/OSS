@@ -13,6 +13,7 @@ class UserPageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F8F9),
       body: UserBody(),
       bottomNavigationBar: SafeArea(
         top: false,
