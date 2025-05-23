@@ -99,7 +99,6 @@ class MyApp extends StatelessWidget {
         '/user_set' : (_) => ProfileScreen(),
         '/badge': (_) => BadgeScreen(),
         '/course': (_) => CourseRecommendedScreen(),
-        '/course_detail': (_) => CourseScreen(),
         '/addrunningmate': (_) => AddRunningmate(),
         '/runningscreen' : (_) => RunningScreen(),
         '/levelguide': (_) => LevelGuideScreen(),
