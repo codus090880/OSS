@@ -2,21 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
+import 'package:prunners/model/course.dart';
 
-class CourseScreen extends StatefulWidget {
-  const CourseScreen({super.key});
+class CourseScreen extends StatelessWidget {
+  final Course course;
 
-  @override
-  State<CourseScreen> createState() => _CourseScreen();
-}
+  const CourseScreen({super.key, required this.course});
 
-class _CourseScreen extends State<CourseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(60),
-        child: CustomTopBar(title: '러닝 코스 1'),
+        preferredSize: const Size.fromHeight(60),
+        child: CustomTopBar(title: course.title),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -26,35 +24,55 @@ class _CourseScreen extends State<CourseScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: Image.asset(
-                'assets/111.png',
+                course.imagePath,
                 fit: BoxFit.cover,
               ),
             ),
             const SizedBox(height: 30),
-            Padding(
-              padding: const EdgeInsets.only(left: 12.0),
-              child: const Text('코스 정보', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
+            const Padding(
+              padding: EdgeInsets.only(left: 12.0),
+              child: Text('코스 정보', style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 15),
             Padding(
               padding: const EdgeInsets.only(left: 12.0),
-              child: const Text('출발지: 충무로역 1번 출구', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              child: Text('위치: ${course.location}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 5),
             Padding(
               padding: const EdgeInsets.only(left: 12.0),
-              child: const Text('거리: 5.5km', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              child: Text('거리: ${course.distance}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
-            const SizedBox(height: 165),
+            const SizedBox(height: 15),
+            Padding(
+              padding: const EdgeInsets.only(left: 12.0),
+              child: Wrap(
+                spacing: 8,
+                children: course.tags.map((tag) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      tag,
+                      style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 100),
             SizedBox(
-                width: double.infinity,
-                child: OutlinedButtonBox(
-                  text: '리뷰 보러가기',
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/read');
-                  },
-                  fontSize: 15,
-                )
+              width: double.infinity,
+              child: OutlinedButtonBox(
+                text: '리뷰 보러가기',
+                onPressed: () {
+                  Navigator.pushNamed(context, '/read');
+                },
+                fontSize: 15,
+              ),
             )
           ],
         ),
@@ -62,7 +80,7 @@ class _CourseScreen extends State<CourseScreen> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: BottomNavBar(
-          currentIndex: 2, // 코스 탭 인덱스
+          currentIndex: 2,
           onTap: (index) {
             Navigator.pushReplacementNamed(
               context,
