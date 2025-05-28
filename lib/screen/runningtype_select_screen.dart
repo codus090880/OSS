@@ -135,7 +135,7 @@ class _RunningtypeSelectScreenState extends State<RunningtypeSelectScreen> {
                   if (isAlone) {
                     Navigator.pushNamed(context, '/runningscreen');
                   } else if (isTogether) {
-                    Navigator.pushNamed(context, '/matching');
+                    Navigator.pushNamed(context, '/runningmate_term');
                   }
                 },
               ),
