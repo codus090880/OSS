@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:prunners/screen/agree_screen.dart';
 import 'package:prunners/screen/alone_screen.dart';
+import 'package:prunners/screen/chat_detail_screen.dart';
 import 'package:prunners/screen/course_notify_screen.dart';
 import 'package:prunners/screen/course_recommended_screen.dart';
 import 'package:prunners/screen/course_screen.dart';
@@ -10,10 +11,12 @@ import 'package:prunners/screen/evaluate_screen.dart';
 import 'package:prunners/screen/home_screen.dart';
 import 'package:prunners/screen/level_guide_screen.dart';
 import 'package:prunners/screen/login_screen.dart';
+import 'package:prunners/screen/matching_list_screen.dart';
 import 'package:prunners/screen/mate_notify_screen.dart';
 import 'package:prunners/screen/profile_screen.dart';
 import 'package:prunners/screen/read_review_screen.dart';
 import 'package:prunners/screen/reset_password_screen.dart';
+import 'package:prunners/screen/runningmate_term_screen.dart';
 import 'package:prunners/screen/runningtype_select_screen.dart';
 import 'package:prunners/screen/signup_screen.dart';
 import 'package:prunners/screen/together_screen.dart';
@@ -107,6 +110,8 @@ class MyApp extends StatelessWidget {
         '/course_notify': (_) => CourseNotifyScreen(),
         '/mate_notify': (_) => MateNotifyScreen(),
         '/delete_account': (_) => DeleteAccountScreen(),
+        '/matching_list': (_) => MatchingListScreen(),
+        '/runningmate_term': (_) => RunningmateTermScreen(),
       },
     );
   }
