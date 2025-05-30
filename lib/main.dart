@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:prunners/screen/agree_screen.dart';
-import 'package:prunners/screen/alone_screen.dart';
 import 'package:prunners/screen/chat_detail_screen.dart';
 import 'package:prunners/screen/course_notify_screen.dart';
 import 'package:prunners/screen/course_recommended_screen.dart';
@@ -16,10 +15,10 @@ import 'package:prunners/screen/mate_notify_screen.dart';
 import 'package:prunners/screen/profile_screen.dart';
 import 'package:prunners/screen/read_review_screen.dart';
 import 'package:prunners/screen/reset_password_screen.dart';
-import 'package:prunners/screen/runningmate_term_screen.dart';
+import 'package:prunners/screen/matching_term_screen.dart';
 import 'package:prunners/screen/runningtype_select_screen.dart';
 import 'package:prunners/screen/signup_screen.dart';
-import 'package:prunners/screen/together_screen.dart';
+import 'package:prunners/screen/term_of_use_screen.dart';
 import 'package:prunners/screen/userpage_screen.dart';
 import 'package:prunners/screen/write_review_screen.dart';
 import 'package:prunners/screen/setting.dart';
@@ -82,7 +81,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black),
         ),
       ),
-      initialRoute: loggedIn ? '/home' : '/login',
+      initialRoute: '/matching_list',
       routes: {
         '/home': (_) => HomeScreen(),
         '/login': (_) => LoginScreen(),
@@ -91,8 +90,6 @@ class MyApp extends StatelessWidget {
         '/profile': (_) => UserPageScreen(),
         '/evaluate': (_) => EvaluateScreen(),
         '/running': (_) => RunningtypeSelectScreen(),
-        '/alone': (_) => AloneScreen(),
-        '/together': (_) => TogetherScreen(),
         '/write': (_) => WriteReviewScreen(),
         '/read': (_) => ReadReviewScreen(),
         '/setting': (_) => Setting(),
@@ -111,7 +108,8 @@ class MyApp extends StatelessWidget {
         '/mate_notify': (_) => MateNotifyScreen(),
         '/delete_account': (_) => DeleteAccountScreen(),
         '/matching_list': (_) => MatchingListScreen(),
-        '/runningmate_term': (_) => RunningmateTermScreen(),
+        '/matching_term': (_) => MatchingTermScreen(),
+        '/term_of_use': (_) => TermOfUseScreen(),
       },
     );
   }

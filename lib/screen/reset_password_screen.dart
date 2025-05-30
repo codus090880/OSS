@@ -104,7 +104,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       } else {
         try {
           final response = await dio.post(
-            'http://127.0.0.1:8000/verify/',
+            '/verify/',
             data: {
               'email': email,
               'code': code,
@@ -154,7 +154,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       } else {
         try {
           final response = await dio.post(
-            'http://127.0.0.1:8000/reset/',
+            '/reset/',
             data: {
               'email': email,
               'new_password': new_password,

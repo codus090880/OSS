@@ -25,7 +25,7 @@ class _CourseNotifyScreenState extends State<CourseNotifyScreen> {
     final dio = Dio();
     try {
       final response = await dio.post(
-        'http://127.0.0.1:8000/course_notify/',
+        '/course_notify/',
         data: {
           'content': notifyText,
         },

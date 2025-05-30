@@ -57,7 +57,7 @@ class _BadgeScreenState extends State<BadgeScreen> {
 
   Future<List<Badge>> fetchBadges() async {
     final dio = Dio();
-    final response = await dio.get('http://127.0.0.1:8000/badges/');
+    final response = await dio.get('/badges/');
     if (response.statusCode == 200) {
       final List<dynamic> data = response.data;
       return data.map((e) => Badge.fromJson(e)).toList();
