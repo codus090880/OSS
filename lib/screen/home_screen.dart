@@ -35,6 +35,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F8F9),
       body: HomeBody(),
       bottomNavigationBar: SafeArea(
         top: false,

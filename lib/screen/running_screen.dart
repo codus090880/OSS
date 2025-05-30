@@ -1,10 +1,10 @@
-// lib/screen/running_screen.dart
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:prunners/widget/running_controller.dart';
-import 'package:flutter/scheduler.dart';  // addPostFrameCallback 사용용
+import 'package:prunners/model/auth_service.dart';
+import 'package:prunners/screen/profile_screen.dart';
 
 class RunningScreen extends StatefulWidget {
   const RunningScreen({Key? key}) : super(key: key);
@@ -23,9 +23,8 @@ class _RunningScreenState extends State<RunningScreen> {
     super.initState();
     _controller = RunningController(onUpdate: () => setState(() {}));
     _controller.init().catchError((e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('권한 에러: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('권한 에러: $e')));
     });
   }
 
@@ -35,15 +34,13 @@ class _RunningScreenState extends State<RunningScreen> {
     super.dispose();
   }
 
-
   Future<void> _onCameraTap() async {
-    final XFile? pickedFile = await _picker.pickImage(
+    final pickedFile = await _picker.pickImage(
       source: ImageSource.camera,
       preferredCameraDevice: CameraDevice.rear,
       imageQuality: 80,
     );
     if (pickedFile == null) return;
-
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -58,6 +55,55 @@ class _RunningScreenState extends State<RunningScreen> {
     );
   }
 
+
+  Future<bool> _onWillPop() async {
+    final shouldQuit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('알림'),
+        content: const Text('러닝을 중단하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldQuit == true) {
+      await _finishAndUpload();
+    }
+
+    return false;
+  }
+
+  Future<void> _finishAndUpload() async {
+    final summary = await _controller.finishRun();
+
+    try {
+      final resp = await AuthService.dio.post(
+        '/api/runs',
+        data: summary.toJson(),
+      );
+      if (resp.statusCode != 200) {
+        throw Exception('서버 오류: ${resp.statusCode}');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('업로드 실패: $e')));
+      //return;
+    }
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => ProfileScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_controller.initialPosition == null) {
@@ -67,67 +113,63 @@ class _RunningScreenState extends State<RunningScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('러닝 중'),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            _controller.stop();
-            Navigator.of(context).pop();
-          },
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('러닝 중'),
+          centerTitle: true,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 1,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            // system back과 동일하게 onWillPop을 트리거합니다
+            onPressed: () => Navigator.maybePop(context),
+          ),
         ),
-      ),
-      body: Column(
-        children: [
-          // 1) map을 먼저
-          Expanded(
-            child: KakaoMap(
-              onMapCreated: (mapCtrl) {
-                _mapController = mapCtrl;
-                // 첫 프레임 이후 안전하게 center·level 설정
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _mapController!
-                      .setCenter(_controller.initialPosition!);
-                  _mapController!
-                      .setLevel(
-                    1,
-                    options: LevelOptions(
-                      animate: Animate(duration: 500),
-                      anchor: _controller.initialPosition!,
+        body: Column(
+          children: [
+            Expanded(
+              child: KakaoMap(
+                onMapCreated: (mapCtrl) {
+                  _mapController = mapCtrl;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _mapController!.setCenter(_controller.initialPosition!);
+                    _mapController!.setLevel(
+                      1,
+                      options: LevelOptions(
+                        animate: Animate(duration: 500),
+                        anchor: _controller.initialPosition!,
+                      ),
+                    );
+                  });
+                },
+                center: _controller.initialPosition!,
+                polylines: [
+                  if (_controller.route.isNotEmpty)
+                    Polyline(
+                      polylineId: 'running_route',
+                      points: _controller.route,
+                      strokeColor: Colors.blue,
+                      strokeWidth: 6,
                     ),
-                  );
-                });
-              },
-              center: _controller.initialPosition!,
-              polylines: [
-                if (_controller.route.isNotEmpty)
-                  Polyline(
-                    polylineId: 'running_route',
-                    points: _controller.route,
-                    strokeColor: Colors.blue,
-                    strokeWidth: 6,
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
-
-          // 2) 그리고 StatusFrame을 화면 맨 밑에
-          StatusFrame(
-            elapsedTime: _controller.elapsedTime,
-            isRunning: _controller.stopwatch.isRunning,
-            onPause: _controller.togglePause,
-            onCamera: _onCameraTap,
-
-            distanceKm: _controller.totalDistance / 1000,
-            calories: _controller.caloriesBurned,
-            paceKmh: _controller.averageSpeed,
-          ),
-        ],
+            StatusFrame(
+              elapsedTime: _controller.elapsedTime,
+              isRunning: _controller.stopwatch.isRunning,
+              onPause: _controller.togglePause,
+              onCamera: _onCameraTap,
+              onMic: _controller.toggleTts,
+              ttsEnabled: _controller.ttsEnabled,
+              distanceKm: _controller.totalDistance / 1000,
+              calories: _controller.caloriesBurned,
+              paceKmh: _controller.averageSpeed,
+            ),
+          ],
+        ),
       ),
     );
   }

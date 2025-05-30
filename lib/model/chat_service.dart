@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/io.dart';
 import 'package:uuid/uuid.dart';
+import 'package:dio/dio.dart';
+import 'package:prunners/model/auth_service.dart';
 
 class ChatService {
   static final ChatService _instance = ChatService._internal();
@@ -32,6 +34,7 @@ class ChatService {
 
   /// 메시지를 보내려면 email(고유키) + nickname(보여줄 이름)를 함께 넘겨야 합니다.
   void sendMessage({
+    required String roomId,
     required String email,
     required String nickname,
     String? text,
@@ -39,6 +42,7 @@ class ChatService {
   }) {
     final msg = ChatMessage(
       id: _uuid.v4(),
+      roomId: roomId,
       email: email,
       nickname: nickname,
       text: text,
@@ -58,8 +62,37 @@ class ChatService {
   }
 }
 
+extension RoomManagement on ChatService {
+  /// 방 제목을 서버에 업데이트
+  Future<void> updateRoomTitle(String roomId, String newTitle) async {
+    try {
+      await AuthService.dio.put(
+        '/rooms/$roomId/title',
+        data: {'title': newTitle},
+      );
+      print('[RoomManagement] 방 제목 업데이트 성공');
+    } on DioError catch (err) {
+      print('[RoomManagement] 방 제목 업데이트 실패: ${err.response?.statusCode} ${err.message}');
+    }
+  }
+
+  /// 방 공개 상태를 서버에 업데이트
+  Future<void> updateRoomVisibility(String roomId, bool isPublic) async {
+    try {
+      await AuthService.dio.put(
+        '/rooms/$roomId/visibility',
+        data: {'isPublic': isPublic},
+      );
+      print('[RoomManagement] 공개 상태 업데이트 성공');
+    } on DioError catch (err) {
+      print('[RoomManagement] 공개 상태 업데이트 실패: ${err.response?.statusCode} ${err.message}');
+    }
+  }
+}
+
 class ChatMessage {
   final String id;
+  final String roomId;
   final String email;
   final String nickname;
   final String? text;
@@ -68,6 +101,7 @@ class ChatMessage {
 
   ChatMessage({
     required this.id,
+    required this.roomId,
     required this.email,
     required this.nickname,
     this.text,
@@ -78,6 +112,7 @@ class ChatMessage {
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
       id: json['id'] as String,
+      roomId: json['roomId'] as String,
       email: json['email'] as String,
       nickname: json['nickname'] as String,
       text: json['text'] as String?,
@@ -88,6 +123,7 @@ class ChatMessage {
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'roomId': roomId,
     'email': email,
     'nickname': nickname,
     'text': text,
@@ -97,3 +133,4 @@ class ChatMessage {
 
   bool get hasImage => imagePath != null;
 }
+

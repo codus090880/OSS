@@ -11,6 +11,7 @@ import 'package:prunners/model/local_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:prunners/screen/login_screen.dart';
 import 'package:prunners/screen/chat_screen.dart';
+import 'package:prunners/screen/running_chat_screen.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class Setting extends StatefulWidget {
@@ -200,6 +201,12 @@ class _SettingState extends State<Setting> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => DeleteAccountScreen()),
+          );
+        }
+        else if (item.label == '이용 약관') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ChatRoomScreen(roomId: "d",)),
           );
         }
       },

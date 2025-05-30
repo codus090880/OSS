@@ -3,17 +3,53 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:pedometer/pedometer.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:prunners/model/ai_tts.dart';
 
-/// Controller: 위치 권한 확인, 위치 추적, 타이머 관리
+class RunSummary {
+  final double distanceKm;
+  final String elapsedTime;
+  final double calories;
+  final double averageSpeedKmh;
+  final double cadenceSpm;
+  final List<LatLng> route;
+
+  RunSummary({
+    required this.distanceKm,
+    required this.elapsedTime,
+    required this.calories,
+    required this.averageSpeedKmh,
+    required this.cadenceSpm,
+    required this.route,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'distance_km': distanceKm,
+    'elapsed_time': elapsedTime,
+    'calories': calories,
+    'avg_speed_kmh': averageSpeedKmh,
+    'cadence_spm': cadenceSpm,
+    'route': route
+        .map((p) => {'lat': p.latitude, 'lng': p.longitude})
+        .toList(),
+  };
+}
+
+/// Controller: 위치 권한, 활동 인식 권한, 위치 추적, 타이머, 스텝(케이던스) 관리
 class RunningController {
   LatLng? initialPosition;
   final List<LatLng> route = [];
+  final List<double> _speedHistory = [];
+  final List<double> _cadenceHistory = [];
   final Stopwatch stopwatch = Stopwatch();
   StreamSubscription<Position>? _posSub;
+  StreamSubscription<StepCount>? _stepSub;
   Timer? _timer;
   final VoidCallback onUpdate;
 
-
+  bool ttsEnabled = false;
   late double weightKg;
 
   // 거리·칼로리·페이스
@@ -21,15 +57,38 @@ class RunningController {
   double caloriesBurned = 0;
   double averageSpeed = 0;
 
-  RunningController({ required this.onUpdate });
+  // 스텝(걸음수)
+  int _initialStepCount = 0;
+  int _offsetStepCount = 0;
+  int stepsSinceStart = 0;
 
-  /// 초기화: 체중 로드 → 권한 요청 → 초기 위치 가져오기 → 타이머·트래킹 시작
+  final GeminiRepositoryImpl _gemini;
+  final FlutterTts _flutterTts = FlutterTts();
+
+  RunningController({ required this.onUpdate })
+      : _gemini = GeminiRepositoryImpl();
+
+  /// 초기화: 체중 로드 → 권한 요청 → 초기 위치 가져오기 → 트래킹 시작
   Future<void> init() async {
-    // 1) SharedPreferences에서 체중 불러오기
-    final prefs = await SharedPreferences.getInstance();
-    weightKg = prefs.getDouble('weightKg') ?? 60.0; // 디폴트 60kg
+    // 활동 인식 권한 요청
+    if (!await Permission.activityRecognition.isGranted) {
+      await Permission.activityRecognition.request();
+    }
 
-    // 2) 위치 권한 확인/요청
+    // 1) TTS+Gemini 세션 초기화
+    await _flutterTts.setLanguage('ko-KR');
+    await _flutterTts.setSpeechRate(1.0);
+    await _flutterTts.setPitch(1.0);
+    await _flutterTts.setVolume(1.0);
+    await _gemini.initTts();
+    await _gemini.setSystemPrompt("당신은 친절한 러닝 코치입니다.");
+    debugPrint("🔧 Gemini 세션 초기화 완료");
+
+    // 2) 체중 로드
+    final prefs = await SharedPreferences.getInstance();
+    weightKg = prefs.getDouble('weightKg') ?? 60.0;
+
+    // 3) 위치 권한
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
@@ -40,22 +99,35 @@ class RunningController {
       throw Exception('위치 권한이 필요합니다');
     }
 
-    // 3) 현재 위치 가져와 초기 센터로 설정
+    // 4) 초기 위치
     final pos = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
     initialPosition = LatLng(pos.latitude, pos.longitude);
     onUpdate();
 
-    // 4) 타이머·트래킹 시작
+    // 걸음수 스트림 구독 (초기값 확보 이후)
+    _stepSub = Pedometer.stepCountStream.listen(_onStepCount,
+        onError: (e) => debugPrint('StepCount error: \$e'));
+
+    // 5) 트래킹 시작
     _startTimer();
     _startTracking();
+  }
+
+  void _onStepCount(StepCount event) {
+    stepsSinceStart = _offsetStepCount + (event.steps - _initialStepCount);
+    onUpdate();
   }
 
   void _startTracking() {
     Position? _prevPos;
 
-    // 즉시 첫 좌표 저장
+    // 세션 시작 시 초기 걸음수 저장
+    Pedometer.stepCountStream.first.then((first) {
+      _initialStepCount = first.steps;
+    });
+
     if (initialPosition != null) {
       route.add(initialPosition!);
       onUpdate();
@@ -64,15 +136,14 @@ class RunningController {
     _posSub = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
+        distanceFilter: 5, //5m마다 갱신
+        /*distanceFilter: 0,
+        timeInterval: 5000, 5초마다 갱신*/
       ),
     ).listen((pos) {
-      final cur = LatLng(pos.latitude, pos.longitude);
+      route.add(LatLng(pos.latitude, pos.longitude));
 
-      // 경로 추가
-      route.add(cur);
-
-      // 1) 구간 거리 계산 (m)
+      // 거리 계산
       if (_prevPos != null) {
         final segment = Geolocator.distanceBetween(
           _prevPos!.latitude, _prevPos!.longitude,
@@ -82,16 +153,16 @@ class RunningController {
       }
       _prevPos = pos;
 
-      // 2) 평균 속도 계산 (km/h)
+      // 평균 속도
       final secs = stopwatch.elapsed.inSeconds;
       if (secs > 0) {
         averageSpeed = (totalDistance / 1000) / (secs / 3600);
       }
+      _speedHistory.add(averageSpeed);
 
-      // 3) 칼로리 계산 (예: 1kg당 1.036kcal/km)
+      // 칼로리
       caloriesBurned = weightKg * (totalDistance / 1000) * 1.036;
 
-      // 4) 스톱워치 시작 & 화면 갱신
       stopwatch.start();
       onUpdate();
     });
@@ -108,17 +179,80 @@ class RunningController {
     if (stopwatch.isRunning) {
       stopwatch.stop();
       _posSub?.pause();
+      _stepSub?.pause();
+      _offsetStepCount = stepsSinceStart;
     } else {
       stopwatch.start();
       _posSub?.resume();
+      _stepSub?.resume();
+      Pedometer.stepCountStream.first.then((event) {
+        _initialStepCount = event.steps;
+      });
     }
     onUpdate();
   }
 
   void stop() {
     _posSub?.cancel();
+    _stepSub?.cancel();
     _timer?.cancel();
     stopwatch.stop();
+  }
+
+  Future<RunSummary> finishRun() async {
+    stop();
+
+    final avgSpeed = _speedHistory.isNotEmpty
+        ? _speedHistory.reduce((a, b) => a + b) / _speedHistory.length
+        : 0.0;
+    final avgCadence = _cadenceHistory.isNotEmpty
+        ? _cadenceHistory.reduce((a, b) => a + b) / _cadenceHistory.length
+        : 0.0;
+
+    return RunSummary(
+      distanceKm: totalDistance / 1000,
+      elapsedTime: elapsedTime,
+      calories: caloriesBurned,
+      averageSpeedKmh: avgSpeed,
+      cadenceSpm: avgCadence,
+      route: route,
+    );
+  }
+
+  double get cadence {
+    final secs = stopwatch.elapsed.inSeconds;
+    _cadenceHistory.add(stepsSinceStart / (secs / 60));
+    if (secs > 0) return stepsSinceStart / (secs / 60);
+    return 0;
+  }
+
+  Future<void> toggleTts() async {
+    ttsEnabled = !ttsEnabled;
+    debugPrint("🎙️ TTS toggled: $ttsEnabled");
+    onUpdate();
+
+    if (!ttsEnabled) return;
+
+    _startFeedbackLoop();
+  }
+
+  void _startFeedbackLoop() {
+    Timer.periodic(const Duration(seconds: 30), (timer) async {
+      if (!ttsEnabled) {
+        timer.cancel();
+        return;
+      }
+      final prompt =
+          "현재 달린 거리는 ${(totalDistance / 1000).toStringAsFixed(1)}km, 평균 속도는 ${averageSpeed.toStringAsFixed(1)}km/h, 걸음 수는 $stepsSinceStart 걸음, 케이던스는 ${cadence.toStringAsFixed(1)}spm입니다.";
+      try {
+        await for (final response in _gemini.sendMessage(prompt)) {
+          debugPrint("📝 Gemini 응답: $response");    // ← 여기에 로그 추가
+          await _flutterTts.speak(response);
+        }
+      } catch (e, st) {
+        debugPrint("❌ Gemini 호출 에러: $e\n$st");
+      }
+    });
   }
 
   String get elapsedTime {
@@ -131,11 +265,14 @@ class RunningController {
 }
 
 
+
 class StatusFrame extends StatelessWidget {
   final String elapsedTime;
   final VoidCallback onPause;
+  final VoidCallback onMic;
   final VoidCallback onCamera;
   final bool isRunning;
+  final bool ttsEnabled;
   final double distanceKm;
   final double calories;
   final double paceKmh;
@@ -145,6 +282,8 @@ class StatusFrame extends StatelessWidget {
     required this.elapsedTime,
     required this.onPause,
     required this.onCamera,
+    required this.onMic,
+    required this.ttsEnabled,
     required this.isRunning,
     required this.distanceKm,
     required this.calories,
@@ -234,6 +373,30 @@ class StatusFrame extends StatelessWidget {
                     ),
                     child: const Center(
                       child: Icon(Icons.camera_alt, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 마이크 버튼
+              Positioned(
+                left: 167,
+                top: 26,
+                child: GestureDetector(
+                  onTap: onMic,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: ShapeDecoration(
+                      color: ttsEnabled
+                          ? const Color(0xFF4CAF50)
+                          : const Color(0xFFBDBDBD),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.mic, color: Colors.white),
                     ),
                   ),
                 ),
@@ -383,7 +546,6 @@ class StatusFrame extends StatelessWidget {
                   ),
                 ),
               ),
-
             ],
           ),
         ),

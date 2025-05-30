@@ -3,42 +3,35 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:prunners/widget/top_bar.dart';
-import 'package:prunners/widget/chat_box.dart';
 import 'package:prunners/model/chat_service.dart';
-import 'package:uuid/uuid.dart';
+import 'package:prunners/widget/chat_box.dart';
 
-class ChatScreen extends StatefulWidget {
+class ChatRoomScreen extends StatefulWidget {
   // 내 정보
-  final String roomId;
   final String currentUserEmail;
   final String currentUserNickname;
 
-  // 상대 정보
-  final String friendEmail;
-  final String friendNickname;
-  final String friendAvatarUrl;
+  // 방 정보
+  final String roomId;
+  final String initialRoomTitle;
+  final bool initialIsPublic;
 
-  const ChatScreen({
+  const ChatRoomScreen({
     Key? key,
-    /*required this.currentUserEmail,
-    required this.currentUserNickname,
-    required this.friendEmail,
-    required this.friendNickname,
-    required this.friendAvatarUrl,*/
-    this.roomId = 'default_room',
-    this.currentUserEmail = 'user1@example.com',
-    this.currentUserNickname = 'User',
-    this.friendEmail = 'bot@example.com',
-    this.friendNickname = 'Echo Bot',
-    this.friendAvatarUrl = 'https://via.placeholder.com/150',
+    this.currentUserEmail = 'user@example.com',
+    this.currentUserNickname = 'Me',
+    required this.roomId,
+    this.initialRoomTitle = '채팅방 제목',
+    this.initialIsPublic = true,
   }) : super(key: key);
 
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  _ChatRoomScreenState createState() => _ChatRoomScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatRoomScreenState extends State<ChatRoomScreen> {
+  late String _roomTitle;
+  late bool _isPublic;
   final List<ChatMessage> _messages = [];
   late final StreamSubscription<ChatMessage> _sub;
   final TextEditingController _textController = TextEditingController();
@@ -48,7 +41,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // WebSocket 메시지 스트림 구독
+    _roomTitle = widget.initialRoomTitle;
+    _isPublic = widget.initialIsPublic;
+
     _sub = ChatService().messages.listen((msg) {
       setState(() => _messages.add(msg));
       _scrollToBottom();
@@ -71,6 +66,18 @@ class _ChatScreenState extends State<ChatScreen> {
       final statuses = await [Permission.camera, Permission.photos].request();
       return statuses.values.every((s) => s.isGranted);
     }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _showImageSourceActionSheet() async {
@@ -108,7 +115,6 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _pickImage(ImageSource src) async {
     final XFile? file = await _picker.pickImage(source: src);
     if (file == null) return;
-    // TODO: 업로드 후 URL을 받아오세요
     final imageUrl = file.path;
 
     ChatService().sendMessage(
@@ -133,38 +139,55 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+  Future<void> _editRoomTitle() async {
+    final controller = TextEditingController(text: _roomTitle);
+    final newTitle = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('방 제목 수정'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(hintText: '새 제목'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: Text('확인')),
+        ],
+      ),
+    );
+    if (newTitle != null && newTitle.isNotEmpty && newTitle != _roomTitle) {
+      setState(() => _roomTitle = newTitle);
+      await ChatService().updateRoomTitle(widget.roomId, newTitle);
+    }
+  }
+
+  Future<void> _togglePublic() async {
+    final newState = !_isPublic;
+    setState(() => _isPublic = newState);
+    await ChatService().updateRoomVisibility(widget.roomId, newState);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFFF0F0F3),
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(60),
-        child: CustomTopBar(
-          titleWidget: Row(
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundImage: NetworkImage(widget.friendAvatarUrl),
-              ),
-              SizedBox(width: 8),
-              Text(widget.friendNickname),
-            ],
-          ),
-          rightIcon: Icons.more_horiz,
-          onRightPressed: () {},
+      appBar: AppBar(
+        title: GestureDetector(
+          onTap: _editRoomTitle,
+          child: Text(_roomTitle),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(_isPublic ? Icons.lock_open : Icons.lock),
+            onPressed: _togglePublic,
+          ),
+          IconButton(
+            icon: Icon(Icons.more_horiz),
+            onPressed: () {
+              // 추가 옵션
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -177,12 +200,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 final msg = _messages[i];
                 final isMe = msg.email == widget.currentUserEmail;
                 return Align(
-                  alignment:
-                  isMe ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     margin: EdgeInsets.symmetric(vertical: 4),
-                    padding:
-                    msg.hasImage ? EdgeInsets.zero : EdgeInsets.all(12),
+                    padding: msg.hasImage ? EdgeInsets.zero : EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isMe ? Color(0xFFE1B08C) : Colors.white,
                       borderRadius: BorderRadius.circular(8),
@@ -203,19 +224,8 @@ class _ChatScreenState extends State<ChatScreen> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: msg.imagePath!.startsWith('http')
-                                ? Image.network(
-                              msg.imagePath!,
-                              width: 200,
-                              height: 200,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(Icons.broken_image),
-                            )
-                                : Image.file(
-                              File(msg.imagePath!),
-                              width: 200,
-                              height: 200,
-                              fit: BoxFit.cover,
-                            ),
+                                ? Image.network(msg.imagePath!, width: 200, height: 200, fit: BoxFit.cover)
+                                : Image.file(File(msg.imagePath!), width: 200, height: 200, fit: BoxFit.cover),
                           ),
                         if (msg.text != null) Text(msg.text!),
                         SizedBox(height: 4),
@@ -230,7 +240,6 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-
           Container(
             color: Colors.white,
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -251,3 +260,5 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
+
+
