@@ -81,7 +81,7 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black),
         ),
       ),
-      initialRoute: '/matching_list',
+      initialRoute: loggedIn ? '/home' : '/login',
       routes: {
         '/home': (_) => HomeScreen(),
         '/login': (_) => LoginScreen(),
