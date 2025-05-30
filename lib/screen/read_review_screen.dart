@@ -46,7 +46,7 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
       isLoading = true;
     });
     try {
-      final response = await dio.get('http://127.0.0.1:8000/course/1/reviews/');
+      final response = await dio.get('/course/1/reviews/');
       if(response.statusCode == 200) {
         final List<dynamic> jsonData = response.data;
         setState(() {

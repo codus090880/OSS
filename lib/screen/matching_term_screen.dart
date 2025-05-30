@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
+import 'package:dio/dio.dart';
+import 'package:prunners/model/auth_service.dart';
 
-class RunningmateTermScreen extends StatefulWidget {
-  const RunningmateTermScreen({super.key});
+class MatchingTermScreen extends StatefulWidget {
+  const MatchingTermScreen({super.key});
 
   @override
-  State<RunningmateTermScreen> createState() => _RunningmateTermScreenState();
+  State<MatchingTermScreen> createState() => _MatchingTermScreen();
 }
 
-class _RunningmateTermScreenState extends State<RunningmateTermScreen> {
+class _MatchingTermScreen extends State<MatchingTermScreen> {
   String? _selectedDistance;
   String? _selectedGender;
 
@@ -122,7 +124,14 @@ class _RunningmateTermScreenState extends State<RunningmateTermScreen> {
                     child: OutlinedButtonBox(
                       text: '매칭 시작하기',
                       onPressed: () {
-                        Navigator.pushNamed(context, '/matching');
+                        Navigator.pushNamed(
+                          context,
+                          '/matching',
+                          arguments: {
+                            'preferred_distance': _selectedDistance,
+                            'preferred_gender': _selectedGender,
+                          },
+                        );
                       },
                     ),
                   ),

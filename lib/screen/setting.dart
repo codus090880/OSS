@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:prunners/screen/delete_account_screen.dart';
 import 'package:prunners/screen/reset_password_screen.dart';
+import 'package:prunners/screen/term_of_use_screen.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/rounded_shadow_box.dart';
@@ -194,7 +195,14 @@ class _SettingState extends State<Setting> {
             context,
             MaterialPageRoute(builder: (_) => ResetPasswordScreen()),
           );
-        } else if (item.label == '로그아웃') {
+        }
+        else if (item.label == '이용 약관') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => TermOfUseScreen()),
+          );
+        }
+        else if (item.label == '로그아웃') {
           logout(context);
         }
         else if (item.label == '회원탈퇴') {

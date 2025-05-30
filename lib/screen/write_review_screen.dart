@@ -60,7 +60,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
       });
 
       final response = await dio.post(
-        'http://127.0.0.1:8000/reviews/',
+        '/reviews/',
         data: formData,
         options: Options(contentType: 'multipart/form-data'),
       );

@@ -79,7 +79,7 @@ class _CourseRecommendedScreenState extends State<CourseRecommendedScreen> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: Text('코스가 존재하지 않습니다.'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -104,7 +104,7 @@ class _CourseRecommendedScreenState extends State<CourseRecommendedScreen> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: Text('코스가 존재하지 않습니다.'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }

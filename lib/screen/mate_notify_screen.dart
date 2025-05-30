@@ -31,7 +31,7 @@ class _MateNotifyScreenState extends State<MateNotifyScreen> {
     try {
       final reporter = await LocalManager.getNickname();
       final response = await dio.post(
-        'http://127.0.0.1:8000/mate_notify/',
+        '/mate_notify/',
         data: {
           'reporter': reporter,
           'target': targetName,

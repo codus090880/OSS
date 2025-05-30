@@ -88,7 +88,7 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
       final evaluator = await LocalManager.getNickname();
 
       final response = await dio.post(
-        'http://127.0.0.1:8000/evaluate/',
+        '/evaluate/',
         data: {
           'target': currentMate.nickname,
           'evaluator': evaluator,

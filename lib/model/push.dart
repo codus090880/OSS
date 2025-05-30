@@ -59,7 +59,17 @@ class PushNotificationService {
       importance: Importance.high,
       priority: Priority.high,
     );
-    const notificationDetails = NotificationDetails(android: androidDetails);
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
     await _plugin.show(id, title, body, notificationDetails);
   }
 
@@ -72,8 +82,18 @@ class PushNotificationService {
       importance: Importance.max,
       priority: Priority.high,
     );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
     // 2) NotificationDetails 변수 선언
-    final notificationDetails = NotificationDetails(android: androidDetails);
+    final notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+    );
 
     // 3) TZDateTime 으로 오늘 12:40 계산 (지나면 내일로)
     final now = tz.TZDateTime.now(tz.local);
@@ -158,5 +178,3 @@ void callbackDispatcher() {
     return Future.value(true);
   });
 }
-
-

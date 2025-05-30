@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/grey_box.dart';
 import 'package:prunners/widget/button_box.dart';
 import 'package:prunners/screen/login_screen.dart';
 import 'package:dio/dio.dart';
+import 'package:prunners/model/auth_service.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
   const DeleteAccountScreen({super.key});
@@ -17,8 +19,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
 
   Future<void> deleteAccount() async {
     try {
-      final response = await Dio().post(
-        'http://127.0.0.1:8000/withdrawl/',
+      final token = await FlutterSecureStorage().read(key: 'accessToken');
+      final response = await AuthService.dio.post(
+        '/withdrawl/',
         data: {
           'password': passwordController.text,
         },

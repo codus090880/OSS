@@ -4,9 +4,10 @@ import 'package:prunners/widget/button_box.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/grey_box.dart';
 import 'package:prunners/model/local_manager.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 enum Gender { male, female }
-enum PreferGender { male, female, any }
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,19 +17,24 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  Gender ?selectValue1;
-  PreferGender ?selectValue2;
+  Gender ?selectValue;
+  File? _profileImage;
 
-  final Map<Gender, String> labels1 = {
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() {
+        _profileImage = File(picked.path);
+      });
+    }
+  }
+
+  final Map<Gender, String> labels = {
     Gender.male: "남성",
     Gender.female: "여성",
   };
 
-  final Map<PreferGender, String> labels2 = {
-    PreferGender.male: "남성",
-    PreferGender.female: "여성",
-    PreferGender.any: "상관없음",
-  };
 
   final List<String> levelOptions = ['Starter', 'Beginner', 'Intermediate', 'Advanced'];
   String? selectedLevel;
@@ -54,10 +60,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: Icon(
-                  Icons.account_circle,
-                  size: 130,
-                  color: Color(0xFFE0E0E0),
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: CircleAvatar(
+                    radius: 65,
+                    backgroundColor: Color(0xFFE0E0E0),
+                    backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                    child: _profileImage == null
+                        ? Icon(Icons.add_a_photo, size: 40, color: Colors.white70)
+                        : null,
+                  ),
                 ),
               ),
               const SizedBox(height: 30),
@@ -84,15 +96,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            labels1[value]!,
+                            labels[value]!,
                             style: const TextStyle(fontSize: 15),
                           ),
                           Radio<Gender>(
                             value: value,
-                            groupValue: selectValue1,
+                            groupValue: selectValue,
                             onChanged: (Gender? newValue) {
                               setState(() {
-                                selectValue1 = newValue!;
+                                selectValue = newValue!;
                               });
                             },
                             activeColor: Colors.deepPurple,
@@ -180,15 +192,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onPressed: () async {
             // 프로필 정보 저장 로직
             final nickname = nicknameController.text.trim();
-            final gender = selectValue1 == Gender.male ? 'male' : 'female';
-            final preferGender = selectValue2?.name ?? 'any';
+            final gender = selectValue == Gender.male ? 'male' : 'female';
             final age = ageController.text.trim();
             final height = heightController.text.trim();
             final weight = weightController.text.trim();
 
             // 유효성 검사
             if(nickname.isEmpty || age.isEmpty || height.isEmpty || weight.isEmpty
-                || selectValue1 == null || selectValue2 == null || selectedLevel == null) {
+                || selectValue == null || selectedLevel == null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('모든 항목을 입력해주세요')),
               );
@@ -210,7 +221,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             try {
               // 닉네임 중복 검사
               final checkResponse = await dio.post(
-                'http://127.0.0.1:8000/check_nickname/',
+                '/check_nickname/',
                 data: {'nickname': nickname},
                 options: Options(headers: {'Content-Type': 'application/json'}),
               );
@@ -220,17 +231,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 );
                 return;
               }
+
+              String? profileUrl;
+              if (_profileImage != null) {
+                final formData = FormData.fromMap({
+                  'file': await MultipartFile.fromFile(
+                    _profileImage!.path,
+                  ),
+                });
+
+                final uploadResponse = await dio.post(
+                  '/profile_image/',
+                  data: formData,
+                  options: Options(contentType: 'multipart/form-data'),
+                );
+
+                if (uploadResponse.statusCode == 200) {
+                  profileUrl = uploadResponse.data['url'];
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('이미지 업로드 실패')),
+                  );
+                  return;
+                }
+              }
+
               // 프로필 저장
               final saveResponse = await dio.post(
-                'http://127.0.0.1:8000/user_set/',
+                '/user_set/',
                 data: {
                   'nickname': nickname,
                   'gender' : gender,
-                  'preferGender' : preferGender,
                   'age' : parsedAge,
                   'height': parsedHeight,
                   'weight': parsedWeight,
                   'level': selectedLevel,
+                  'profile_url': profileUrl,
                 },
                 options: Options(
                   headers: {'content-Type': 'application/json'},
@@ -243,7 +279,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await LocalManager.setHeight(parsedHeight);
                 await LocalManager.setWeight(parsedWeight);
                 await LocalManager.setLevel(selectedLevel!);
-                await LocalManager.setPreferGender(preferGender);
+                if (profileUrl != null) {
+                  await LocalManager.setProfileUrl(profileUrl);
+                }
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('프로필 저장 완료')),
                 );
