@@ -87,6 +87,7 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
       ),
       body: SafeArea(
         child: ListView.builder(
+          padding: const EdgeInsets.only(top: 16, bottom: 8),
           itemCount: chatRooms.length,
           itemBuilder: (context, index) {
             final room = chatRooms[index];
@@ -98,13 +99,10 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
+                  border: Border.all(
+                    color: Colors.grey.shade300,
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
