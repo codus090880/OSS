@@ -17,12 +17,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   int step = 1;
   int remainingSeconds = 300;
   Timer? timer;
-  final bool isMock = true;
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController codeController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmController = TextEditingController();
+
   final _pwdReg = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#\$&*~]).{8,}$');
   final _emailReg = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
 
@@ -50,80 +50,70 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final confirm_password = confirmController.text;
 
     if (step == 1) {
-      if(email.isEmpty) {
+      if (email.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('이메일을 입력해주세요')),
         );
-        if (!_emailReg.hasMatch(email)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('올바른 이메일 형식이 아닙니다')),
-          );
-          return;
-        }
+        return;
       }
-      if (isMock) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        startTimer();
-        setState(() => step = 2);
-      } else {
-        try {
-          final response = await dio.post(
-              'http://127.0.0.1:8000/send/',
-              data: { 'email': email }
-          );
-          if (response.data['success'] == true) {
-            startTimer();
-            setState(() => step = 2);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('이메일 전송에 실패했습니다.')),
-            );
-          }
-        } catch(e) {
+      if (!_emailReg.hasMatch(email)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('올바른 이메일 형식이 아닙니다')),
+        );
+        return;
+      }
+
+      try {
+        final response = await dio.post(
+          'https://7605-210-94-220-228.ngrok-free.app/api/send_verification_code/',
+          data: {'email': email},
+        );
+        if (response.data['success'] == true) {
+          startTimer();
+          setState(() => step = 2);
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('서버 오류: $e')),
+            SnackBar(content: Text('이메일 전송에 실패했습니다.')),
           );
         }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('서버 오류: $e')),
+        );
       }
-    } else if (step == 2) {
+    }
+
+    else if (step == 2) {
       if (code.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('인증번호를 입력해주세요')),
         );
         return;
       }
-      if (isMock) {
-        await Future.delayed(const Duration(milliseconds: 300));
-        if (code == '1234') {
+
+      try {
+        final response = await dio.post(
+          'https://7605-210-94-220-228.ngrok-free.app/api/verify_code/',
+          data: {
+            'email': email,
+            'code': code,
+          },
+        );
+        if (response.data['success'] == true) {
           setState(() => step = 3);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('인증번호가 올바르지 않습니다.')),
+            SnackBar(content: Text('인증번호가 올바르지 않습니다.')),
           );
         }
-      } else {
-        try {
-          final response = await dio.post(
-            '/verify/',
-            data: {
-              'email': email,
-              'code': code,
-            },
-          );
-          if(response.data['verified'] == true) {
-            setState(() => step = 3);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('인증번호가 올바르지 않습니다.')),
-            );
-          }
-        } catch(e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('서버 오류: $e')),
-          );
-        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('서버 오류: $e')),
+        );
       }
-    } else if (step == 3) {
+    }
+
+    else if (step == 3) {
       if (new_password.isEmpty || confirm_password.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('비밀번호를 모두 입력해주세요')),
@@ -142,44 +132,35 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         );
         return;
       }
-      if (isMock) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("비밀번호가 성공적으로 변경되었습니다.")),
+
+      try {
+        final response = await dio.post(
+          'https://7605-210-94-220-228.ngrok-free.app/api/reset_password/',
+          data: {
+            'email': email,
+            'code': code,
+            'new_password': new_password,
+          },
         );
-        await Future.delayed(const Duration(seconds: 1));
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      } else {
-        try {
-          final response = await dio.post(
-            '/reset/',
-            data: {
-              'email': email,
-              'new_password': new_password,
-            },
-          );
-          if(response.statusCode == 200 && response.data['success'] == true) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("비밀번호가 성공적으로 변경되었습니다.")),
-            );
-            Future.delayed(const Duration(seconds: 1), () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            });
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("비밀번호 변경에 실패했습니다.")),
-            );
-          }
-        } catch(e) {
+        if (response.statusCode == 200 && response.data['success'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('서버 오류: $e')),
+            const SnackBar(content: Text("비밀번호가 성공적으로 변경되었습니다.")),
+          );
+          Future.delayed(const Duration(seconds: 1), () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            );
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("비밀번호 변경에 실패했습니다.")),
           );
         }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('서버 오류: $e')),
+        );
       }
     }
   }
