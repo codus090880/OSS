@@ -1,37 +1,23 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/chat_box.dart';
 import 'package:prunners/model/chat_service.dart';
-import 'package:uuid/uuid.dart';
+import 'package:prunners/model/auth_service.dart';
 
 class ChatScreen extends StatefulWidget {
-  // 내 정보
-  final String roomId;
-  final String currentUserEmail;
-  final String currentUserNickname;
-
-  // 상대 정보
-  final String friendEmail;
-  final String friendNickname;
+  // 친구의 ID(서버 API 호출용) 이자, UI에 표시할 닉네임
+  final String friendUsername;
   final String friendAvatarUrl;
 
   const ChatScreen({
     Key? key,
-    /*required this.currentUserEmail,
-    required this.currentUserNickname,
-    required this.friendEmail,
-    required this.friendNickname,
-    required this.friendAvatarUrl,*/
-    this.roomId = 'default_room',
-    this.currentUserEmail = 'user1@example.com',
-    this.currentUserNickname = 'User',
-    this.friendEmail = 'bot@example.com',
-    this.friendNickname = 'Echo Bot',
-    this.friendAvatarUrl = 'https://via.placeholder.com/150',
+    required this.friendUsername,
+    required this.friendAvatarUrl,
   }) : super(key: key);
 
   @override
@@ -39,28 +25,83 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  int? _roomId;
   final List<ChatMessage> _messages = [];
-  late final StreamSubscription<ChatMessage> _sub;
+
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
 
+  File? _selectedImageFile;
+  bool _isLoading = false;
+
+  // 예: 로컬 스토리지나 JWT payload에서 내 닉네임을 가져오는 메서드
+  Future<String> get _myNickname async {
+    final stored = await AuthService.storage.read(key: 'MY_NICKNAME');
+    return stored ?? '';
+  }
+
   @override
   void initState() {
     super.initState();
-    // WebSocket 메시지 스트림 구독
-    _sub = ChatService().messages.listen((msg) {
-      setState(() => _messages.add(msg));
-      _scrollToBottom();
-    });
+    _initializeChat();
   }
 
   @override
   void dispose() {
-    _sub.cancel();
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initializeChat() async {
+    setState(() => _isLoading = true);
+    try {
+      final roomId =
+      await ChatService().getOrCreateRoom(widget.friendUsername);
+      setState(() => _roomId = roomId);
+
+      final msgs = await ChatService().fetchMessages(roomId);
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(msgs);
+      });
+      _scrollToBottom();
+    } catch (e) {
+      print('[ChatScreen] _initializeChat 에러: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleSend() async {
+    final text = _textController.text.trim();
+    if ((text.isEmpty) && _selectedImageFile == null) return;
+    if (_roomId == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await ChatService().sendMessageHttp(
+        roomId: _roomId!,
+        message: text.isEmpty ? null : text,
+        imageFile: _selectedImageFile,
+      );
+      _textController.clear();
+      setState(() => _selectedImageFile = null);
+
+      final updated = await ChatService().fetchMessages(_roomId!);
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(updated);
+      });
+      _scrollToBottom();
+    } catch (e) {
+      print('[ChatScreen] _handleSend 에러: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<bool> _requestPermissions() async {
@@ -106,31 +147,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _pickImage(ImageSource src) async {
-    final XFile? file = await _picker.pickImage(source: src);
-    if (file == null) return;
-    // TODO: 업로드 후 URL을 받아오세요
-    final imageUrl = file.path;
-
-    ChatService().sendMessage(
-      roomId: widget.roomId,
-      email: widget.currentUserEmail,
-      nickname: widget.currentUserNickname,
-      imagePath: imageUrl,
-    );
-    _scrollToBottom();
-  }
-
-  void _handleSend() {
-    final text = _textController.text.trim();
-    if (text.isEmpty) return;
-    ChatService().sendMessage(
-      roomId: widget.roomId,
-      email: widget.currentUserEmail,
-      nickname: widget.currentUserNickname,
-      text: text,
-    );
-    _textController.clear();
-    _scrollToBottom();
+    final XFile? picked = await _picker.pickImage(source: src);
+    if (picked == null) return;
+    setState(() => _selectedImageFile = File(picked.path));
   }
 
   void _scrollToBottom() {
@@ -159,93 +178,122 @@ class _ChatScreenState extends State<ChatScreen> {
                 backgroundImage: NetworkImage(widget.friendAvatarUrl),
               ),
               SizedBox(width: 8),
-              Text(widget.friendNickname),
+              Text(widget.friendUsername),
             ],
           ),
-          rightIcon: Icons.more_horiz,
-          onRightPressed: () {},
         ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: _messages.length,
-              itemBuilder: (_, i) {
-                final msg = _messages[i];
-                final isMe = msg.email == widget.currentUserEmail;
-                return Align(
-                  alignment:
-                  isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 4),
-                    padding:
-                    msg.hasImage ? EdgeInsets.zero : EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isMe ? Color(0xFFE1B08C) : Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!isMe)
-                          Padding(
-                            padding: EdgeInsets.only(bottom: 4),
-                            child: Text(
-                              msg.nickname,
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                            ),
-                          ),
-                        if (msg.hasImage)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: msg.imagePath!.startsWith('http')
-                                ? Image.network(
-                              msg.imagePath!,
-                              width: 200,
-                              height: 200,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(Icons.broken_image),
-                            )
-                                : Image.file(
-                              File(msg.imagePath!),
-                              width: 200,
-                              height: 200,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        if (msg.text != null) Text(msg.text!),
-                        SizedBox(height: 4),
-                        Text(
-                          '${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
-                          style: TextStyle(fontSize: 12, color: Colors.black54),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          Container(
-            color: Colors.white,
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              children: [
+          Column(
+            children: [
+              if (_isLoading && _messages.isEmpty)
+                Expanded(child: Center(child: CircularProgressIndicator()))
+              else
                 Expanded(
-                  child: ChatBox(
-                    controller: _textController,
-                    onSend: _handleSend,
-                    onAdd: _showImageSourceActionSheet,
+                  child: FutureBuilder<String>(
+                    future: _myNickname,
+                    builder: (context, snapshot) {
+                      final myNick = snapshot.data ?? '';
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding:
+                        EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        itemCount: _messages.length,
+                        itemBuilder: (_, i) {
+                          final msg = _messages[i];
+                          final isMe = msg.sender == myNick;
+                          return Align(
+                            alignment: isMe
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              margin: EdgeInsets.symmetric(vertical: 4),
+                              padding: msg.imageUrl != null
+                                  ? EdgeInsets.zero
+                                  : EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color:
+                                isMe ? Color(0xFFE1B08C) : Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
+                                  )
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (!isMe)
+                                    Padding(
+                                      padding: EdgeInsets.only(bottom: 4),
+                                      child: Text(
+                                        msg.sender,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  if (msg.imageUrl != null)
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        msg.imageUrl!,
+                                        width: 200,
+                                        height: 200,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            Icon(Icons.broken_image),
+                                      ),
+                                    ),
+                                  if (msg.message.isNotEmpty)
+                                    Padding(
+                                      padding: EdgeInsets.only(
+                                          top: msg.imageUrl != null
+                                              ? 4
+                                              : 0),
+                                      child: Text(msg.message),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
-              ],
-            ),
+              Container(
+                color: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ChatBox(
+                        controller: _textController,
+                        onSend: _handleSend,
+                        onAdd: _showImageSourceActionSheet,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
+          if (_isLoading && _messages.isNotEmpty)
+            Positioned(
+              top: 8,
+              left: 0,
+              right: 0,
+              child: Center(
+                child:
+                SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+            ),
         ],
       ),
     );

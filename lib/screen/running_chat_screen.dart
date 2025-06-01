@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:prunners/model/chat_service.dart';
+import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/chat_box.dart';
+import 'package:prunners/model/chat_service.dart';
+import 'package:prunners/model/local_manager.dart';
 import 'package:prunners/screen/running_screen.dart';
 import 'package:prunners/screen/matching_list_screen.dart';
 
@@ -14,7 +17,7 @@ class ChatRoomScreen extends StatefulWidget {
   final String currentUserNickname;
 
   // 방 정보
-  final String roomId;
+  final int roomId;
   final String initialRoomTitle;
   final bool initialIsPublic;
 
@@ -36,26 +39,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   late String _roomTitle;
   late bool _isPublic;
   final List<ChatMessage> _messages = [];
-  late final StreamSubscription<ChatMessage> _sub;
+  Timer? _pollTimer;
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
 
-  // 참가자 리스트 (예시 데이터). 실제로는 백엔드 API로부터 받아와야 합니다.
+  // 예시 참가자 리스트 (실제는 서버 API 호출로 대체)
   final List<Map<String, String>> _participants = [
-    {
-      'avatarUrl': 'https://via.placeholder.com/50',
-      'nickname': 'Alice',
-    },
-    {
-      'avatarUrl': 'https://via.placeholder.com/50',
-      'nickname': 'Bob',
-    },
-    {
-      'avatarUrl': 'https://via.placeholder.com/50',
-      'nickname': 'Charlie',
-    },
+    {'avatarUrl': 'https://via.placeholder.com/50', 'nickname': 'Alice'},
+    {'avatarUrl': 'https://via.placeholder.com/50', 'nickname': 'Bob'},
+    {'avatarUrl': 'https://via.placeholder.com/50', 'nickname': 'Charlie'},
   ];
+
+  File? _selectedImageFile;
+  bool _isLoading = false;
+
+  Future<String> get _myNickname async {
+    return await LocalManager.getNickname();
+  }
 
   @override
   void initState() {
@@ -63,19 +64,36 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _roomTitle = widget.initialRoomTitle;
     _isPublic = widget.initialIsPublic;
 
-    // WebSocket 메시지 스트림 구독
-    _sub = ChatService().messages.listen((msg) {
-      setState(() => _messages.add(msg));
-      _scrollToBottom();
-    });
+    // 초기 메시지 불러오기
+    _loadMessages();
+
+    // 주기적으로 메시지 폴링 (예: 3초마다)
+    _pollTimer = Timer.periodic(Duration(seconds: 3), (_) => _loadMessages());
   }
 
   @override
   void dispose() {
-    _sub.cancel();
+    _pollTimer?.cancel();
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadMessages() async {
+    setState(() => _isLoading = true);
+    try {
+      final fetched = await ChatService().fetchMessages(widget.roomId);
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(fetched);
+      });
+      _scrollToBottom();
+    } catch (e) {
+      print('[ChatRoomScreen] 메시지 불러오기 실패: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<bool> _requestPermissions() async {
@@ -86,18 +104,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       final statuses = await [Permission.camera, Permission.photos].request();
       return statuses.values.every((s) => s.isGranted);
     }
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-        );
-      }
-    });
   }
 
   Future<void> _showImageSourceActionSheet() async {
@@ -133,30 +139,56 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   Future<void> _pickImage(ImageSource src) async {
-    final XFile? file = await _picker.pickImage(source: src);
-    if (file == null) return;
-    final imageUrl = file.path;
+    final XFile? picked = await _picker.pickImage(source: src);
+    if (picked == null) return;
+    setState(() => _selectedImageFile = File(picked.path));
 
-    ChatService().sendMessage(
-      roomId: widget.roomId,
-      email: widget.currentUserEmail,
-      nickname: widget.currentUserNickname,
-      imagePath: imageUrl,
-    );
-    _scrollToBottom();
+    // 선택한 이미지 즉시 전송
+    await _sendMessage(imageFile: _selectedImageFile);
   }
 
-  void _handleSend() {
-    final text = _textController.text.trim();
-    if (text.isEmpty) return;
-    ChatService().sendMessage(
-      roomId: widget.roomId,
-      email: widget.currentUserEmail,
-      nickname: widget.currentUserNickname,
-      text: text,
-    );
-    _textController.clear();
-    _scrollToBottom();
+  Future<void> _sendMessage({String? text, File? imageFile}) async {
+    if ((text == null || text.trim().isEmpty) && imageFile == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await ChatService().sendMessageHttp(
+        roomId: widget.roomId,
+        message: (text == null || text.trim().isEmpty) ? null : text.trim(),
+        imageFile: imageFile,
+      );
+      _textController.clear();
+      setState(() => _selectedImageFile = null);
+
+      final updated = await ChatService().fetchMessages(widget.roomId);
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(updated);
+      });
+      _scrollToBottom();
+    } catch (e) {
+      print('[ChatRoomScreen] 메시지 전송 실패: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleSend() async {
+    final text = _textController.text;
+    await _sendMessage(text: text);
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _editRoomTitle() async {
@@ -171,7 +203,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: Text('확인')),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text?.trim()), child: Text('확인')),
         ],
       ),
     );
@@ -187,15 +219,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     await ChatService().updateRoomVisibility(widget.roomId, newState);
   }
 
-  /// 채팅방 나가기: 서버 요청 후 매칭 리스트 화면으로 이동
   Future<void> _leaveRoomAndNavigate() async {
-    // 1) 서버에 나가기 요청
     try {
-      //await ChatService().leaveRoom(widget.roomId);
+      await ChatService().leaveRoom(widget.roomId);
     } catch (_) {
-      // 실패 시에도 강제 이동하거나 에러 처리 로직 추가 가능
+      // 에러 무시
     }
-    // 2) 매칭 리스트 화면으로 이동
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => MatchingListScreen()),
@@ -218,7 +247,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             onPressed: _togglePublic,
           ),
           IconButton(
-            icon: Icon(Icons.menu),
+            icon: Icon(Icons.menu), // 샌드위치 메뉴
             onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
           ),
         ],
@@ -298,44 +327,53 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               itemCount: _messages.length,
               itemBuilder: (_, i) {
                 final msg = _messages[i];
-                final isMe = msg.email == widget.currentUserEmail;
-                return Align(
-                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 4),
-                    padding: msg.hasImage ? EdgeInsets.zero : EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isMe ? Color(0xFFE1B08C) : Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!isMe)
-                          Padding(
-                            padding: EdgeInsets.only(bottom: 4),
-                            child: Text(
-                              msg.nickname,
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                            ),
-                          ),
-                        if (msg.hasImage)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: msg.imagePath!.startsWith('http')
-                                ? Image.network(msg.imagePath!, width: 200, height: 200, fit: BoxFit.cover)
-                                : Image.file(File(msg.imagePath!), width: 200, height: 200, fit: BoxFit.cover),
-                          ),
-                        if (msg.text != null) Text(msg.text!),
-                        SizedBox(height: 4),
-                        Text(
-                          '${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
-                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                return FutureBuilder<String>(
+                  future: _myNickname,
+                  builder: (context, snapshot) {
+                    final myNick = snapshot.data ?? '';
+                    final isMe = msg.sender == myNick;
+                    return Align(
+                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: EdgeInsets.symmetric(vertical: 4),
+                        padding: msg.imageUrl != null ? EdgeInsets.zero : EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isMe ? Color(0xFFE1B08C) : Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
                         ),
-                      ],
-                    ),
-                  ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!isMe)
+                              Padding(
+                                padding: EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  msg.sender,
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                              ),
+                            if (msg.imageUrl != null)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  msg.imageUrl!,
+                                  width: 200,
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Icon(Icons.broken_image),
+                                ),
+                              ),
+                            if (msg.message.isNotEmpty)
+                              Padding(
+                                padding: EdgeInsets.only(top: msg.imageUrl != null ? 4 : 0),
+                                child: Text(msg.message),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),

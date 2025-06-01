@@ -27,6 +27,27 @@ class RunSummary {
     required this.dateTime,
   });
 
+  factory RunSummary.fromJson(Map<String, dynamic> json) {
+    List<LatLng> parsedRoute = [];
+    if (json['route'] is List) {
+      parsedRoute = (json['route'] as List<dynamic>).map((pt) {
+        final lat = (pt['lat'] as num).toDouble();
+        final lng = (pt['lng'] as num).toDouble();
+        return LatLng(lat, lng);
+      }).toList();
+    }
+
+    return RunSummary(
+      distanceKm: (json['distance_km'] as num).toDouble(),
+      elapsedTime: json['elapsed_time'].toString(),
+      calories: (json['calories'] as num).toDouble(),
+      averageSpeedKmh: (json['avg_speed_kmh'] as num).toDouble(),
+      cadenceSpm: (json['cadence_spm'] as num).toDouble(),
+      route: parsedRoute,
+      dateTime: DateTime.parse(json['date_time'].toString()),
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'distance_km': distanceKm,
     'elapsed_time': elapsedTime,

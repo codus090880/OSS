@@ -37,6 +37,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:prunners/model/local_manager.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:workmanager/workmanager.dart';
 
 
 void main() async {
@@ -54,9 +55,29 @@ void main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final enabled = prefs.getBool('pushEnabled') ?? false;
+
   if (enabled) {
-    await PushNotificationService.scheduleOneTimeNotificationAt1240();
+    await PushNotificationService.scheduleDailyFixed(
+      id: 1,
+      title: '상쾌한 아침입니다.',
+      body: '러닝 어떠신가요?',
+      hour: 7,
+      minute: 00,
+      payload: 'morning_greeting',
+    );
+
+    final lastDateStr = prefs.getString('lastWeatherCheckDate');
+    final todayStr = DateTime.now().toString().split(' ')[0];
+
+    if (lastDateStr != todayStr) {
+      final apiKey = dotenv.env['WEATHER_API_KEY'] ?? '';
+      if (apiKey.isNotEmpty) {
+        await PushNotificationService.fetchWeatherAndNotify(apiKey);
+        await prefs.setString('lastWeatherCheckDate', todayStr);
+      }
+    }
   }
+
   final isLoggedIn = await AuthService.isLoggedIn();
   runApp(MyApp(loggedIn: isLoggedIn));
 }
@@ -96,7 +117,6 @@ class MyApp extends StatelessWidget {
         '/matching': (_) => MatchingScreen(),
         '/record': (_) => RecordScreen(),
         '/after_matching' : (_) => AfterMatching(),
-        '/chat' : (_) => ChatScreen(),
         '/user_set' : (_) => ProfileScreen(),
         '/badge': (_) => BadgeScreen(),
         '/course': (_) => CourseRecommendedScreen(),

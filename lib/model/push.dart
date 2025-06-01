@@ -1,5 +1,6 @@
+// lib/model/push.dart
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:workmanager/workmanager.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:dio/dio.dart';
@@ -14,167 +15,145 @@ class PushNotificationService {
 
   static Future<void> initialize() async {
     tz.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
+
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
-    const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
-    await _plugin.initialize(initSettings);
+    const settings = InitializationSettings(android: androidInit, iOS: iosInit);
+    await _plugin.initialize(settings);
 
+    // 알림 권한 요청 (Android 13 이상 필요)
     if (await Permission.notification.isDenied) {
       await Permission.notification.request();
-    }
-
-    if (!await Geolocator.isLocationServiceEnabled()) {
-      print('[ERROR] 위치 서비스 비활성화');
-      return;
-    }
-
-    var perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
-        print('[ERROR] 위치 권한 거부');
-        return;
-      }
     }
   }
 
   static Future<void> initializeBackground() async {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(
-      android: androidInit,
-      iOS: iosInit,
-    );
-    await _plugin.initialize(initSettings);
+    const settings = InitializationSettings(android: androidInit, iOS: iosInit);
+    await _plugin.initialize(settings);
   }
 
-  static Future<void> showNotification({required String title, required String body, int id = 0}) async {
-    const androidDetails = AndroidNotificationDetails(
-      'weather_channel', '날씨 알림',
-      channelDescription: '매일 아침 러닝 가능 여부 알림',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    const notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-    await _plugin.show(id, title, body, notificationDetails);
-  }
-
-  static Future<void> scheduleOneTimeNotificationAt1240() async {
-    // 1) 채널 및 세부 설정
-    const androidDetails = AndroidNotificationDetails(
-      'weather_channel',            // channel id
-      '날씨 알림',                   // channel name
-      channelDescription: '시간 예약 알림',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    // 2) NotificationDetails 변수 선언
-    final notificationDetails = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-    );
-
-    // 3) TZDateTime 으로 오늘 12:40 계산 (지나면 내일로)
+  static Future<void> scheduleDailyFixed({
+    required int id,
+    required String title,
+    required String body,
+    required int hour,
+    required int minute,
+    String? payload,
+  }) async {
+    // 현재 로컬 시각(Asia/Seoul) 구하기
     final now = tz.TZDateTime.now(tz.local);
+
+    // 오늘(hour:minute)에 해당하는 TZDateTime 생성
     var scheduledDate = tz.TZDateTime(
       tz.local,
       now.year,
       now.month,
       now.day,
-      7,
-      00,
+      hour,
+      minute,
     );
+    // 이미 지났으면 내일 같은 시각으로 설정
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
-    print('[DEBUG] 예약된 알림 시간: $scheduledDate');
+    const androidDetails = AndroidNotificationDetails(
+      'daily_fixed_channel',
+      '매일 아침 알림',
+      channelDescription: '매일 오전 7시에 상쾌한 아침 메시지',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const iosDetails = DarwinNotificationDetails();
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
 
-    // 4) zonedSchedule 호출 (최신 버전 시그니처)
     await _plugin.zonedSchedule(
-      43,                              // 알림 ID
-      '매일 푸시 알림',                 // 제목
-      '지금은 12시 40분입니다!',         // 본문
-      scheduledDate,                   // 첫 실행 시각
-      notificationDetails,             // NotificationDetails
-      androidScheduleMode:
-      AndroidScheduleMode.exactAllowWhileIdle,      // Doze 모드에서도 정확히
-      matchDateTimeComponents: DateTimeComponents.time,  // 매일 같은 시각에 반복
+      id,
+      title,
+      body,
+      scheduledDate,
+      notificationDetails,
+      payload: payload,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
+
   static Future<void> fetchWeatherAndNotify(String apiKey) async {
     try {
-      final dio = Dio();
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      // 위치 권한 및 현재 위치 획득
+      if (!await Geolocator.isLocationServiceEnabled()) return;
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+        perm = await Geolocator.requestPermission();
+        if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+          return;
+        }
+      }
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
       double lat = position.latitude;
       double lon = position.longitude;
-      print('[DEBUG] 현재 위치: $lat, $lon');
 
-      final weatherResp = await dio.get(WEATHER_API_URL, queryParameters: {
-        'lat': lat, 'lon': lon, 'appid': apiKey, 'lang': 'kr'
-      });
-
-      final pollutionResp = await dio.get(AIR_POLLUTION_API_URL, queryParameters: {
-        'lat': lat, 'lon': lon, 'appid': apiKey
-      });
-
+      // 날씨 정보 요청
+      final dio = Dio();
+      final weatherResp = await dio.get(
+        WEATHER_API_URL,
+        queryParameters: {
+          'lat': lat,
+          'lon': lon,
+          'appid': apiKey,
+          'lang': 'kr',
+          'units': 'metric',
+        },
+      );
+      final pollutionResp = await dio.get(
+        AIR_POLLUTION_API_URL,
+        queryParameters: {
+          'lat': lat,
+          'lon': lon,
+          'appid': apiKey,
+        },
+      );
       final weather = weatherResp.data;
       final air = pollutionResp.data;
       final description = weather['weather'][0]['description'];
+      final temperature = weather['main']['temp'];
       final pm10 = air['list'][0]['components']['pm10'];
 
-      print('[DEBUG] 날씨: $description, PM10: $pm10');
-
-      if (pm10 <= 800) {
-        await showNotification(
-          title: '러닝하기 좋은날!',
-          body: '날씨: $description, 미세먼지: ${pm10.toStringAsFixed(1)} µg/m³',
-          id: 2,
+      // 조건 검사: pm10 <= 800 && 맑음 (description == 'Clear' 예시)
+      if (pm10 <= 80 && description.contains('맑음')) {
+        const androidDetails = AndroidNotificationDetails(
+          'weather_dynamic_channel',
+          '날씨 기반 알림',
+          channelDescription: '날씨와 미세먼지 정보 기반 알림',
+          importance: Importance.high,
+          priority: Priority.high,
         );
-      } else {
-        print('[INFO] 조건 미충족: 알림 생략');
+        const iosDetails = DarwinNotificationDetails();
+        const notificationDetails = NotificationDetails(
+          android: androidDetails,
+          iOS: iosDetails,
+        );
+
+        final title = '상쾌한 하루!';
+        final body =
+            '지금은 ${temperature.toStringAsFixed(1)}℃, 날씨: $description,\n미세먼지(PM10): ${pm10.toStringAsFixed(1)} µg/m³\n러닝하기 좋은 날씨예요!';
+        await _plugin.show(999, title, body, notificationDetails);
       }
     } catch (e) {
-      print('[ERROR] 날씨 확인 실패: $e');
+      print('[ERROR] fetchWeatherAndNotify 실패: $e');
     }
   }
-}
-
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    print('[DEBUG] Workmanager task 실행됨: $task');
-    final apiKey = inputData?['apiKey'];
-
-    if (apiKey == null || apiKey.isEmpty) {
-      print('[ERROR] inputData에 apiKey 없음');
-      return Future.value(false);
-    }
-
-    await PushNotificationService.initializeBackground();
-    await PushNotificationService.fetchWeatherAndNotify(apiKey);
-
-    return Future.value(true);
-  });
 }

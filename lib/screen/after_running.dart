@@ -14,13 +14,9 @@ class PostRunScreen extends StatefulWidget {
 class _PostRunScreenState extends State<PostRunScreen> {
   KakaoMapController? _mapController;
 
-  /// 지도 생성 완료 시 호출됩니다.
   void _onMapCreated(KakaoMapController controller) {
     _mapController = controller;
 
-    // 1) 만약 경로가 비어 있지 않다면,
-    //    첫 번째 좌표를 중심으로 잡고,
-    //    레벨을 6으로 확대(zoom in)해서 지도를 보여줍니다.
     if (widget.summary.route.isNotEmpty) {
       final LatLng firstPoint = widget.summary.route.first;
       _mapController!.setCenter(firstPoint);
@@ -44,7 +40,6 @@ class _PostRunScreenState extends State<PostRunScreen> {
     }
   }
 
-  /// "25.04.10 목 17:31" 형태로 날짜/시간 포맷
   String _formatDateTime(DateTime dt) {
     final yearStr = (dt.year % 100).toString().padLeft(2, '0');
     final monthStr = dt.month.toString().padLeft(2, '0');
@@ -56,12 +51,10 @@ class _PostRunScreenState extends State<PostRunScreen> {
     return '$yearStr.$monthStr.$dayStr $wk $hourStr:$minStr';
   }
 
-  /// 예: 10.9 → "10,9"
   String _formatDistance(double km) {
     return km.toStringAsFixed(1).replaceAll('.', ',');
   }
 
-  /// 평균 속도(km/h) → 분’초” (예: 6’11”)
   String _formatPace(double avgSpeedKmh) {
     if (avgSpeedKmh <= 0) return '00’00”';
     final pace = 60 / avgSpeedKmh;
@@ -93,13 +86,11 @@ class _PostRunScreenState extends State<PostRunScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ─────────── 상단 결과 정보 ───────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 러닝 종료 시각
                 Text(
                   dateText,
                   style: const TextStyle(
@@ -109,7 +100,6 @@ class _PostRunScreenState extends State<PostRunScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                // 총 거리
                 Text(
                   distanceText,
                   style: const TextStyle(
@@ -119,11 +109,9 @@ class _PostRunScreenState extends State<PostRunScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // 러닝 시간 / 평균 페이스 / 케이던스 / 칼로리
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // 러닝 시간
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -169,7 +157,6 @@ class _PostRunScreenState extends State<PostRunScreen> {
                         ),
                       ],
                     ),
-                    // 케이던스
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -192,7 +179,6 @@ class _PostRunScreenState extends State<PostRunScreen> {
                         ),
                       ],
                     ),
-                    // 칼로리
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -223,18 +209,14 @@ class _PostRunScreenState extends State<PostRunScreen> {
 
           const Divider(height: 1, color: Color(0xFFE0E0E0)),
 
-          // ─────────── 카카오맵 영역 ───────────
           Expanded(
             child: KakaoMap(
               onMapCreated: _onMapCreated,
 
-              // 초기 center를 첫 좌표로 지정합니다.
-              // 실제 카메라 위치(확대)는 onMapCreated에서 setCenter/setLevel로 덮어씌워집니다.
               center: summary.route.isNotEmpty
                   ? summary.route.first
                   : LatLng(37.5665, 126.9780),
 
-              // ─── 폴리라인 그리기 ───
               polylines: summary.route.isNotEmpty
                   ? [
                 Polyline(
@@ -247,7 +229,6 @@ class _PostRunScreenState extends State<PostRunScreen> {
               ]
                   : const <Polyline>[],
 
-              // ─── 마커 그리기 ───
               markers: summary.route.isNotEmpty
                   ? [
                 Marker(

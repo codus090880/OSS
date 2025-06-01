@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/rounded_shadow_box.dart';
 import 'package:prunners/screen/runningmate.dart';
@@ -39,6 +40,7 @@ class _UserBodyState extends State<UserBody> {
   String _nickname = '사용자';
   String? _profileUrl;
   String _level = 'Starter';
+  String? _localImagePath;
   double? _mannerTemp;
   bool _isLoading = true;
 
@@ -46,6 +48,7 @@ class _UserBodyState extends State<UserBody> {
   void initState() {
     super.initState();
     _loadLocalData();
+    _loadLocalProfileImage();
     _fetchMannerTemp();
   }
 
@@ -58,6 +61,21 @@ class _UserBodyState extends State<UserBody> {
       _profileUrl = url;
       _level      = lvl;
     });
+  }
+
+  Future<void> _loadLocalProfileImage() async {
+    final savedPath = await LocalManager.getProfileImagePath();
+    if (savedPath != null && savedPath.isNotEmpty) {
+      final file = File(savedPath);
+      if (await file.exists()) {
+        setState(() {
+          _localImagePath = savedPath;
+        });
+      } else {
+        // 파일이 없으면 Preference에서 지워두기
+        await LocalManager.setProfileImagePath('');
+      }
+    }
   }
 
   Future<void> _fetchMannerTemp() async {
@@ -92,15 +110,24 @@ class _UserBodyState extends State<UserBody> {
 
             Row(
               children: [
-                _profileUrl != null
-                    ? ClipOval(
-                  child: Image.network(
-                    _profileUrl!,
-                    width: 100, height: 100,
-                    fit: BoxFit.cover,
-                  ),
-                )
-                    : Icon(Icons.account_circle, size: 100, color: Colors.grey),
+                if (_localImagePath != null)
+                  ClipOval(
+                    child: Image.file(
+                      File(_localImagePath!),
+                      width: 100, height: 100,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else if (_profileUrl != null && _profileUrl!.isNotEmpty)
+                  ClipOval(
+                    child: Image.network(
+                      _profileUrl!,
+                      width: 100, height: 100,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  Icon(Icons.account_circle, size: 100, color: Colors.grey),
                 SizedBox(width: 30),
                 Text(
                   _nickname,

@@ -5,6 +5,7 @@ class LocalManager {
   // 1) SharedPreferences 키 상수 정리
   static const _kNickname     = 'nickname';
   static const _kProfileUrl   = 'profile_url';
+  static const _kProfileImagePath = 'profile_image_path';
   static const _kLevel        = 'level';
   static const _kGender       = 'gender';
   static const _kAge          = 'age';
@@ -132,5 +133,15 @@ class LocalManager {
   static Future<void> setWeight(double v) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_kWeight, v);
+  }
+
+  static Future<String?> getProfileImagePath() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kProfileImagePath);
+  }
+
+  static Future<void> setProfileImagePath(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kProfileImagePath, path);
   }
 }

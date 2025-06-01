@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:prunners/screen/change_password_screen.dart';
 import 'package:prunners/screen/delete_account_screen.dart';
 import 'package:prunners/screen/reset_password_screen.dart';
@@ -27,6 +28,7 @@ class _SettingState extends State<Setting> {
 
   String? _nickname;
   String? _profileUrl;
+  String? _localImagePath;
   bool _isProfileLoading = true;
 
   final List<_MenuItem> _menuItems = const [
@@ -42,6 +44,7 @@ class _SettingState extends State<Setting> {
   void initState() {
     super.initState();
     _loadProfileFromPrefs();
+    _loadLocalProfileImage();
     _loadPushSetting();
   }
 
@@ -54,6 +57,20 @@ class _SettingState extends State<Setting> {
       _profileUrl = url;
       _isProfileLoading = false;
     });
+  }
+
+  Future<void> _loadLocalProfileImage() async {
+    final savedPath = await LocalManager.getProfileImagePath();
+    if (savedPath != null && savedPath.isNotEmpty) {
+      final file = File(savedPath);
+      if (await file.exists()) {
+        setState(() {
+          _localImagePath = savedPath;
+        });
+      } else {
+        await LocalManager.setProfileImagePath('');
+      }
+    }
   }
 
   Future<void> _loadPushSetting() async {
@@ -100,16 +117,7 @@ class _SettingState extends State<Setting> {
                     width: 48, height: 48,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                      : (_profileUrl != null
-                      ? ClipOval(
-                    child: Image.network(
-                      _profileUrl!,
-                      width: 48, height: 48,
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                      : Icon(Icons.account_circle, size: 48, color: Colors.grey)
-                  ),
+                      : (_buildProfileAvatar()),
                   SizedBox(width: 12),
                   Text(
                     _isProfileLoading
@@ -163,6 +171,30 @@ class _SettingState extends State<Setting> {
       ),
     );
   }
+  Widget _buildProfileAvatar() {
+    if (_localImagePath != null) {
+      return ClipOval(
+        child: Image.file(
+          File(_localImagePath!),
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+        ),
+      );
+    } else if (_profileUrl != null && _profileUrl!.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          _profileUrl!,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+        ),
+      );
+    } else {
+      return Icon(Icons.account_circle, size: 48, color: Colors.grey);
+    }
+  }
+
 
   Widget _buildMenuRow(_MenuItem item) {
     Widget trailing;
@@ -196,12 +228,12 @@ class _SettingState extends State<Setting> {
             MaterialPageRoute(builder: (_) => ChangePasswordScreen()),
           );
         }
-        else if (item.label == '이용 약관') {
+        /*else if (item.label == '이용 약관') {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => TermOfUseScreen()),
           );
-        }
+        }*/
         else if (item.label == '로그아웃') {
           logout(context);
         }
@@ -214,7 +246,9 @@ class _SettingState extends State<Setting> {
         else if (item.label == '이용 약관') {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => ChatRoomScreen(roomId: "d",)),
+            MaterialPageRoute(
+              builder: (_) => ChatRoomScreen(roomId: 1,),
+            ),
           );
         }
       },
