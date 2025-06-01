@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:prunners/screen/change_password_screen.dart';
 import 'package:prunners/screen/delete_account_screen.dart';
 import 'package:prunners/screen/reset_password_screen.dart';
 import 'package:prunners/screen/term_of_use_screen.dart';
@@ -192,7 +193,7 @@ class _SettingState extends State<Setting> {
         } else if (item.label == '비밀번호 변경') {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => ResetPasswordScreen()),
+            MaterialPageRoute(builder: (_) => ChangePasswordScreen()),
           );
         }
         else if (item.label == '이용 약관') {
