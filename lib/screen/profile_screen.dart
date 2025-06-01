@@ -4,6 +4,8 @@ import 'package:prunners/widget/button_box.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/grey_box.dart';
 import 'package:prunners/model/local_manager.dart';
+import 'package:path/path.dart' as path;
+import 'package:prunners/model/auth_service.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
@@ -19,6 +21,14 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   Gender ?selectValue;
   File? _profileImage;
+
+
+  @override
+  void initState() {
+    super.initState();
+    AuthService.setupInterceptor();
+  }
+
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -217,62 +227,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return;
             }
 
-            final dio = Dio();
+            String? profileUrl;
+
             try {
-              // 닉네임 중복 검사
-              final checkResponse = await dio.post(
-                '/check_nickname/',
-                data: {'nickname': nickname},
-                options: Options(headers: {'Content-Type': 'application/json'}),
-              );
-              if (checkResponse.data['exists'] == true) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('이미 사용 중인 닉네임입니다')),
-                );
-                return;
-              }
 
-              String? profileUrl;
+              final form = FormData();
+              form.fields
+                ..add(MapEntry('nickname', nickname))
+                ..add(MapEntry('gender', gender))
+                ..add(MapEntry('age', parsedAge.toString()))
+                ..add(MapEntry('height', parsedHeight.toString()))
+                ..add(MapEntry('weight', parsedWeight.toString()))
+                ..add(MapEntry('level', selectedLevel!));
+
               if (_profileImage != null) {
-                final formData = FormData.fromMap({
-                  'file': await MultipartFile.fromFile(
-                    _profileImage!.path,
+                form.files.add(
+                  MapEntry(
+                    'profile_image',
+                    await MultipartFile.fromFile(
+                      _profileImage!.path,
+                      filename: path.basename(_profileImage!.path),
+                    ),
                   ),
-                });
-
-                final uploadResponse = await dio.post(
-                  '/profile_image/',
-                  data: formData,
-                  options: Options(contentType: 'multipart/form-data'),
                 );
-
-                if (uploadResponse.statusCode == 200) {
-                  profileUrl = uploadResponse.data['url'];
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('이미지 업로드 실패')),
-                  );
-                  return;
-                }
               }
+              final saveResponse = await AuthService.dio.put(
+                '/api/update-profile/',
+                data: form,
 
-              // 프로필 저장
-              final saveResponse = await dio.post(
-                '/user_set/',
-                data: {
-                  'nickname': nickname,
-                  'gender' : gender,
-                  'age' : parsedAge,
-                  'height': parsedHeight,
-                  'weight': parsedWeight,
-                  'level': selectedLevel,
-                  'profile_url': profileUrl,
-                },
-                options: Options(
-                  headers: {'content-Type': 'application/json'},
-                ),
               );
+
               if (saveResponse.statusCode == 201 || saveResponse.statusCode == 200) {
+                profileUrl = saveResponse.data['profile_url'] as String?;
                 await LocalManager.setNickname(nickname);
                 await LocalManager.setGender(gender);
                 await LocalManager.setAge(parsedAge);
@@ -282,6 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (profileUrl != null) {
                   await LocalManager.setProfileUrl(profileUrl);
                 }
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('프로필 저장 완료')),
                 );

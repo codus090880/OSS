@@ -5,6 +5,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:prunners/model/chat_service.dart';
 import 'package:prunners/widget/chat_box.dart';
+import 'package:prunners/screen/running_screen.dart';
+import 'package:prunners/screen/matching_list_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   // 내 정보
@@ -30,6 +32,7 @@ class ChatRoomScreen extends StatefulWidget {
 }
 
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late String _roomTitle;
   late bool _isPublic;
   final List<ChatMessage> _messages = [];
@@ -38,12 +41,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
 
+  // 참가자 리스트 (예시 데이터). 실제로는 백엔드 API로부터 받아와야 합니다.
+  final List<Map<String, String>> _participants = [
+    {
+      'avatarUrl': 'https://via.placeholder.com/50',
+      'nickname': 'Alice',
+    },
+    {
+      'avatarUrl': 'https://via.placeholder.com/50',
+      'nickname': 'Bob',
+    },
+    {
+      'avatarUrl': 'https://via.placeholder.com/50',
+      'nickname': 'Charlie',
+    },
+  ];
+
   @override
   void initState() {
     super.initState();
     _roomTitle = widget.initialRoomTitle;
     _isPublic = widget.initialIsPublic;
 
+    // WebSocket 메시지 스트림 구독
     _sub = ChatService().messages.listen((msg) {
       setState(() => _messages.add(msg));
       _scrollToBottom();
@@ -167,9 +187,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     await ChatService().updateRoomVisibility(widget.roomId, newState);
   }
 
+  /// 채팅방 나가기: 서버 요청 후 매칭 리스트 화면으로 이동
+  Future<void> _leaveRoomAndNavigate() async {
+    // 1) 서버에 나가기 요청
+    try {
+      //await ChatService().leaveRoom(widget.roomId);
+    } catch (_) {
+      // 실패 시에도 강제 이동하거나 에러 처리 로직 추가 가능
+    }
+    // 2) 매칭 리스트 화면으로 이동
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => MatchingListScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: Color(0xFFF0F0F3),
       appBar: AppBar(
         title: GestureDetector(
@@ -182,15 +218,79 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             onPressed: _togglePublic,
           ),
           IconButton(
-            icon: Icon(Icons.more_horiz),
-            onPressed: () {
-              // 추가 옵션
-            },
+            icon: Icon(Icons.menu),
+            onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
           ),
         ],
       ),
+      endDrawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: [
+              // 1. 참가자 리스트
+              Expanded(
+                child: ListView.separated(
+                  padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  itemCount: _participants.length,
+                  separatorBuilder: (_, __) => SizedBox(height: 12),
+                  itemBuilder: (_, index) {
+                    final p = _participants[index];
+                    return Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundImage: NetworkImage(p['avatarUrl']!),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          p['nickname']!,
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+
+              // 2. 러닝하기 버튼
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => RunningScreen()),
+                    );
+                  },
+                  child: Text('러닝하기'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              SizedBox(height: 12),
+
+              // 3. 채팅방 나가기 버튼
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: OutlinedButton(
+                  onPressed: _leaveRoomAndNavigate,
+                  child: Text('채팅방 나가기'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
       body: Column(
         children: [
+          // 채팅 메시지 영역
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -240,6 +340,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               },
             ),
           ),
+          // 입력창
           Container(
             color: Colors.white,
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -260,5 +361,3 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 }
-
-

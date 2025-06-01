@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
@@ -15,7 +16,7 @@ class RunSummary {
   final double averageSpeedKmh;
   final double cadenceSpm;
   final List<LatLng> route;
-
+  final DateTime dateTime;
   RunSummary({
     required this.distanceKm,
     required this.elapsedTime,
@@ -23,6 +24,7 @@ class RunSummary {
     required this.averageSpeedKmh,
     required this.cadenceSpm,
     required this.route,
+    required this.dateTime,
   });
 
   Map<String, dynamic> toJson() => {
@@ -31,6 +33,7 @@ class RunSummary {
     'calories': calories,
     'avg_speed_kmh': averageSpeedKmh,
     'cadence_spm': cadenceSpm,
+    'date_time': dateTime.toIso8601String(),
     'route': route
         .map((p) => {'lat': p.latitude, 'lng': p.longitude})
         .toList(),
@@ -133,13 +136,23 @@ class RunningController {
       onUpdate();
     }
 
+    // Android: 5초마다 업데이트, 거리 필터는 0m
+    final androidSettings = AndroidSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 0,                         // 거리 변화에 상관없이
+      intervalDuration: const Duration(seconds: 5), // 5초마다 위치 요청
+    );
+
+    // iOS: distanceFilter만 지정 (intervalDuration은 지원 안 됨)
+    final appleSettings = AppleSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 0,  // 0m 이동하지 않아도 업데이트
+      activityType: ActivityType.fitness, // 러닝 용도로 최적화
+      pauseLocationUpdatesAutomatically: false,
+    );
+
     _posSub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5, //5m마다 갱신
-        /*distanceFilter: 0,
-        timeInterval: 5000, 5초마다 갱신*/
-      ),
+      locationSettings: Platform.isAndroid ? androidSettings : appleSettings,
     ).listen((pos) {
       route.add(LatLng(pos.latitude, pos.longitude));
 
@@ -208,7 +221,7 @@ class RunningController {
     final avgCadence = _cadenceHistory.isNotEmpty
         ? _cadenceHistory.reduce((a, b) => a + b) / _cadenceHistory.length
         : 0.0;
-
+    debugPrint('▶▶ finishRun(): route 길이 = ${route.length}');
     return RunSummary(
       distanceKm: totalDistance / 1000,
       elapsedTime: elapsedTime,
@@ -216,6 +229,7 @@ class RunningController {
       averageSpeedKmh: avgSpeed,
       cadenceSpm: avgCadence,
       route: route,
+      dateTime: DateTime.now(),
     );
   }
 

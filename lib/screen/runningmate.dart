@@ -39,7 +39,7 @@ class _RunningMateState extends State<RunningMate> {
 
   Future<void> _fetchFriends() async {
     try {
-      final resp = await dio.get('/friends/');
+      final resp = await dio.get('/list_friends/');
       final data = resp.data as List;
       setState(() {
         _friends = data.map((e) => Friend.fromJson(e)).toList();
@@ -54,7 +54,7 @@ class _RunningMateState extends State<RunningMate> {
   Future<void> _deleteFriend(int index) async {
     final f = _friends[index];
     try {
-      await dio.delete('/friends/${Uri.encodeComponent(f.nickname)}/');
+      await dio.delete('/delete_friend/');
       setState(() => _friends.removeAt(index));
     } catch (e) {
       ScaffoldMessenger.of(context)
@@ -62,20 +62,101 @@ class _RunningMateState extends State<RunningMate> {
     }
   }
 
+  void _showFriendRequests() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: FutureBuilder(
+              future: dio.get('/list_pending_requests/'),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('요청 목록 로드 실패'));
+                }
+                final List reqs = (snapshot.data as dynamic).data as List;
+                if (reqs.isEmpty) {
+                  return Center(child: Text('대기 중인 친구 요청이 없습니다.'));
+                }
+                final requests = reqs.map((e) => FriendRequest.fromJson(e)).toList();
+                return ListView.separated(
+                  padding: EdgeInsets.all(16),
+                  itemCount: requests.length,
+                  separatorBuilder: (_, __) => Divider(),
+                  itemBuilder: (_, i) {
+                    final r = requests[i];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: NetworkImage(r.fromAvatarUrl),
+                      ),
+                      title: Text(r.fromNickname),
+                      subtitle: Text('님이 친구 요청을 보냈습니다.'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextButton(
+                            onPressed: () async {
+                              await dio.post('/accept_friend_request/');
+                              // 모달 새로고침
+                              setState(() {});
+                              Navigator.pop(context);
+                              _showFriendRequests();
+                            },
+                            child: Text('수락'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              await dio.post('/friends/reject/');
+                              setState(() {});
+                              Navigator.pop(context);
+                              _showFriendRequests();
+                            },
+                            child: Text('거절'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(60),
-        child: CustomTopBar(
-          title: '러닝 메이트',
-          rightIcon: Icons.person_add,
-          onRightPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => AddRunningmate()),
-            );
-          },
+        child: AppBar(
+          title: Text('러닝 메이트'),
+          actions: [
+            IconButton(
+                icon: Icon(Icons.person_add),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => AddRunningmate()),
+                  );
+                },
+            ),
+            IconButton(
+              icon: Icon(Icons.notifications),
+              onPressed: _showFriendRequests,
+            ),
+          ],
+
         ),
       ),
       body: _loading
@@ -171,6 +252,23 @@ class _RunningMateState extends State<RunningMate> {
           },
         ),
       ),
+    );
+  }
+}
+
+class FriendRequest {
+  final String fromNickname;
+  final String fromAvatarUrl;
+
+  FriendRequest({
+    required this.fromNickname,
+    required this.fromAvatarUrl,
+  });
+
+  factory FriendRequest.fromJson(Map<String, dynamic> json) {
+    return FriendRequest(
+      fromNickname: json['from_nickname'],
+      fromAvatarUrl: json['from_avatar_url'],
     );
   }
 }

@@ -11,12 +11,10 @@ class LocalManager {
   static const _kHeight       = 'height';
   static const _kWeight       = 'weight';
 
-  /// 앱 기동 시 한 번만 호출.
-  /// 로컬에 빠진 키가 있으면 서버에서 한 번에 받아와 캐싱.
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 로컬에 저장되지 않은 키 목록
+
     final needs = <String>[
       _kNickname,
       _kProfileUrl,

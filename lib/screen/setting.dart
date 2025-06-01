@@ -11,7 +11,6 @@ import 'package:prunners/model/push.dart';
 import 'package:prunners/model/local_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:prunners/screen/login_screen.dart';
-import 'package:prunners/screen/chat_screen.dart';
 import 'package:prunners/screen/running_chat_screen.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -252,8 +251,6 @@ Future<void> logout(BuildContext context) async {
   final storage = FlutterSecureStorage();
   await storage.delete(key: 'ACCESS_TOKEN');
   await storage.delete(key: 'REFRESH_TOKEN');
-  await SharedPreferences.getInstance()
-       .then((prefs) => prefs.clear());
   Navigator.pushAndRemoveUntil(
     context,
     MaterialPageRoute(builder: (_) => LoginScreen()),

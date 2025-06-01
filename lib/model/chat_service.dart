@@ -16,7 +16,6 @@ class ChatService {
   ChatService._internal() {
     _controller = StreamController<ChatMessage>.broadcast();
 
-    // TODO: 실제 서버 WS URL로 변경 (예: wss://api.yourserver.com/ws/chat/)
     _channel = IOWebSocketChannel.connect('wss://echo.websocket.events');
 
     _channel.stream.listen(
@@ -32,13 +31,12 @@ class ChatService {
 
   Stream<ChatMessage> get messages => _controller.stream;
 
-  /// 메시지를 보내려면 email(고유키) + nickname(보여줄 이름)를 함께 넘겨야 합니다.
   void sendMessage({
     required String roomId,
     required String email,
     required String nickname,
     String? text,
-    String? imagePath, // 서버 업로드 후 URL
+    String? imagePath,
   }) {
     final msg = ChatMessage(
       id: _uuid.v4(),

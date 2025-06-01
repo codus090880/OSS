@@ -5,6 +5,7 @@ import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:prunners/widget/running_controller.dart';
 import 'package:prunners/model/auth_service.dart';
 import 'package:prunners/screen/profile_screen.dart';
+import 'package:prunners/screen/after_running.dart';
 
 class RunningScreen extends StatefulWidget {
   const RunningScreen({Key? key}) : super(key: key);
@@ -76,9 +77,16 @@ class _RunningScreenState extends State<RunningScreen> {
     );
 
     if (shouldQuit == true) {
-      await _finishAndUpload();
-    }
+      // 1) 러닝을 마치고 RunSummary를 받아온다
+      final summary = await _controller.finishRun();
 
+      // 2) PostRunScreen으로 이동 (현재 화면 제거)
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => PostRunScreen(summary: summary),
+        ),
+      );
+    }
     return false;
   }
 

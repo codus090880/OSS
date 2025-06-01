@@ -77,8 +77,8 @@ class _AddRunningmateState extends State<AddRunningmate> {
   Future<void> _addFriend(String friendNickname) async {
     try {
       final resp = await _dio.post(
-        '/add_friend/',
-        data: {'friend_nickname': friendNickname},
+        '/send_friend_request/',
+        data: {'to_username': friendNickname},
       );
       if (resp.statusCode == 200) {
         setState(() {

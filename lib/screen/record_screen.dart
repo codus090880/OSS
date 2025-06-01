@@ -5,7 +5,6 @@ import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/model/auth_service.dart';
 import 'package:prunners/screen/write_review_screen.dart';
 
-// Model for running record
 class RunningRecord {
   final int id;
   final DateTime date;
@@ -52,7 +51,7 @@ class _RecordScreenState extends State<RecordScreen> {
     _fetchRecords();
   }
 
-  /// 서버로 GET 요청을 보내고, 받은 JSON을 날짜별로 그룹화합니다.
+
   Future<void> _fetchRecords() async {
     try {
       final dio = AuthService.dio;
