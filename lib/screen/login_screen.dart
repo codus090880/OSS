@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await dio.post(
-        'https://7605-210-94-220-228.ngrok-free.app/api/token/',
+        'https://a10e-121-160-204-245.ngrok-free.app/api/token/',
         data: {
           'email': email,
           'password': password,

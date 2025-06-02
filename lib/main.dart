@@ -10,6 +10,7 @@ import 'package:prunners/screen/evaluate_screen.dart';
 import 'package:prunners/screen/home_screen.dart';
 import 'package:prunners/screen/level_guide_screen.dart';
 import 'package:prunners/screen/login_screen.dart';
+import 'package:prunners/screen/match_failed_screen.dart';
 import 'package:prunners/screen/matching_list_screen.dart';
 import 'package:prunners/screen/mate_notify_screen.dart';
 import 'package:prunners/screen/profile_screen.dart';
@@ -130,6 +131,8 @@ class MyApp extends StatelessWidget {
         '/matching_list': (_) => MatchingListScreen(),
         '/matching_term': (_) => MatchingTermScreen(),
         '/term_of_use': (_) => TermOfUseScreen(),
+        '/matching_failed': (_) => MatchingFailedScreen(),
+
       },
     );
   }

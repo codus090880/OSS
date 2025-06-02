@@ -21,7 +21,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     try {
       final token = await FlutterSecureStorage().read(key: 'accessToken');
       final response = await AuthService.dio.post(
-        '/withdrawl/',
+        '/withdrawal/',
         data: {
           'password': passwordController.text,
         },

@@ -65,7 +65,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
       try {
         final response = await dio.post(
-          'https://7605-210-94-220-228.ngrok-free.app/api/send_verification_code/',
+          'https://a10e-121-160-204-245.ngrok-free.app/api/send_verification_code/',
           data: {'email': email},
         );
         if (response.data['success'] == true) {
@@ -93,7 +93,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
       try {
         final response = await dio.post(
-          'https://7605-210-94-220-228.ngrok-free.app/api/verify_code/',
+          'https://a10e-121-160-204-245.ngrok-free.app/api/verify_code/',
           data: {
             'email': email,
             'code': code,
@@ -135,7 +135,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
       try {
         final response = await dio.post(
-          'https://7605-210-94-220-228.ngrok-free.app/api/reset_password/',
+          'https://a10e-121-160-204-245.ngrok-free.app/api/reset_password/',
           data: {
             'email': email,
             'code': code,
