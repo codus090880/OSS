@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,7 +9,6 @@ import 'package:prunners/model/chat_service.dart';
 import 'package:prunners/model/auth_service.dart';
 
 class ChatScreen extends StatefulWidget {
-  // 친구의 ID(서버 API 호출용) 이자, UI에 표시할 닉네임
   final String friendUsername;
   final String friendAvatarUrl;
 
@@ -35,7 +33,8 @@ class _ChatScreenState extends State<ChatScreen> {
   File? _selectedImageFile;
   bool _isLoading = false;
 
-  // 예: 로컬 스토리지나 JWT payload에서 내 닉네임을 가져오는 메서드
+  Timer? _pollTimer;
+
   Future<String> get _myNickname async {
     final stored = await AuthService.storage.read(key: 'MY_NICKNAME');
     return stored ?? '';
@@ -45,10 +44,26 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _initializeChat();
+
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (_roomId == null) return;
+      try {
+        final updated = await ChatService().fetchMessages(_roomId!);
+        setState(() {
+          _messages
+            ..clear()
+            ..addAll(updated);
+        });
+        _scrollToBottom();
+      } catch (e) {
+        print('[ChatScreen] 자동 갱신 실패: $e');
+      }
+    });
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -117,7 +132,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _showImageSourceActionSheet() async {
     if (!await _requestPermissions()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('권한이 필요합니다. 설정에서 허용해주세요.')),
+        const SnackBar(content: Text('권한이 필요합니다. 설정에서 허용해주세요.')),
       );
       return;
     }
@@ -126,16 +141,16 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (_) => SafeArea(
         child: Wrap(children: [
           ListTile(
-            leading: Icon(Icons.photo_library),
-            title: Text('갤러리'),
+            leading: const Icon(Icons.photo_library),
+            title: const Text('갤러리'),
             onTap: () {
               Navigator.pop(context);
               _pickImage(ImageSource.gallery);
             },
           ),
           ListTile(
-            leading: Icon(Icons.camera_alt),
-            title: Text('카메라'),
+            leading: const Icon(Icons.camera_alt),
+            title: const Text('카메라'),
             onTap: () {
               Navigator.pop(context);
               _pickImage(ImageSource.camera);
@@ -157,7 +172,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
       }
@@ -167,9 +182,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF0F0F3),
+      backgroundColor: const Color(0xFFF0F0F3),
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(60),
+        preferredSize: const Size.fromHeight(60),
         child: CustomTopBar(
           titleWidget: Row(
             children: [
@@ -177,7 +192,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 radius: 16,
                 backgroundImage: NetworkImage(widget.friendAvatarUrl),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(widget.friendUsername),
             ],
           ),
@@ -188,7 +203,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Column(
             children: [
               if (_isLoading && _messages.isEmpty)
-                Expanded(child: Center(child: CircularProgressIndicator()))
+                const Expanded(child: Center(child: CircularProgressIndicator()))
               else
                 Expanded(
                   child: FutureBuilder<String>(
@@ -197,8 +212,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       final myNick = snapshot.data ?? '';
                       return ListView.builder(
                         controller: _scrollController,
-                        padding:
-                        EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         itemCount: _messages.length,
                         itemBuilder: (_, i) {
                           final msg = _messages[i];
@@ -208,15 +223,15 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ? Alignment.centerRight
                                 : Alignment.centerLeft,
                             child: Container(
-                              margin: EdgeInsets.symmetric(vertical: 4),
+                              margin: const EdgeInsets.symmetric(vertical: 4),
                               padding: msg.imageUrl != null
                                   ? EdgeInsets.zero
-                                  : EdgeInsets.all(12),
+                                  : const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color:
-                                isMe ? Color(0xFFE1B08C) : Colors.white,
+                                isMe ? const Color(0xFFE1B08C) : Colors.white,
                                 borderRadius: BorderRadius.circular(8),
-                                boxShadow: [
+                                boxShadow: const [
                                   BoxShadow(
                                     color: Colors.black12,
                                     blurRadius: 4,
@@ -229,10 +244,10 @@ class _ChatScreenState extends State<ChatScreen> {
                                 children: [
                                   if (!isMe)
                                     Padding(
-                                      padding: EdgeInsets.only(bottom: 4),
+                                      padding: const EdgeInsets.only(bottom: 4),
                                       child: Text(
                                         msg.sender,
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12,
                                         ),
@@ -247,15 +262,13 @@ class _ChatScreenState extends State<ChatScreen> {
                                         height: 200,
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) =>
-                                            Icon(Icons.broken_image),
+                                        const Icon(Icons.broken_image),
                                       ),
                                     ),
                                   if (msg.message.isNotEmpty)
                                     Padding(
                                       padding: EdgeInsets.only(
-                                          top: msg.imageUrl != null
-                                              ? 4
-                                              : 0),
+                                          top: msg.imageUrl != null ? 4 : 0),
                                       child: Text(msg.message),
                                     ),
                                 ],
@@ -269,7 +282,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               Container(
                 color: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Row(
                   children: [
                     Expanded(
@@ -285,7 +299,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
           if (_isLoading && _messages.isNotEmpty)
-            Positioned(
+            const Positioned(
               top: 8,
               left: 0,
               right: 0,

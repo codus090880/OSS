@@ -1,30 +1,18 @@
 import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/chat_box.dart';
-import 'package:prunners/model/chat_service.dart';
+import 'package:prunners/model/running_chat_service.dart';
 import 'package:prunners/model/local_manager.dart';
 import 'package:prunners/screen/running_screen.dart';
 import 'package:prunners/screen/matching_list_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
-  // 내 정보
-  final String currentUserEmail;
-  final String currentUserNickname;
-
-  // 방 정보
   final int roomId;
   final String initialRoomTitle;
   final bool initialIsPublic;
 
   const ChatRoomScreen({
     Key? key,
-    this.currentUserEmail = 'user@example.com',
-    this.currentUserNickname = 'Me',
     required this.roomId,
     this.initialRoomTitle = '채팅방 제목',
     this.initialIsPublic = true,
@@ -42,21 +30,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Timer? _pollTimer;
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final ImagePicker _picker = ImagePicker();
 
-  // 예시 참가자 리스트 (실제는 서버 API 호출로 대체)
+  late Future<String> _futureNickname;
+  bool _isLoading = false;
+
+  // 참가자 예시 리스트 (실제에는 서버에서 가져온 데이터로 대체)
   final List<Map<String, String>> _participants = [
     {'avatarUrl': 'https://via.placeholder.com/50', 'nickname': 'Alice'},
     {'avatarUrl': 'https://via.placeholder.com/50', 'nickname': 'Bob'},
     {'avatarUrl': 'https://via.placeholder.com/50', 'nickname': 'Charlie'},
   ];
-
-  File? _selectedImageFile;
-  bool _isLoading = false;
-
-  Future<String> get _myNickname async {
-    return await LocalManager.getNickname();
-  }
 
   @override
   void initState() {
@@ -64,11 +47,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _roomTitle = widget.initialRoomTitle;
     _isPublic = widget.initialIsPublic;
 
-    // 초기 메시지 불러오기
+    _futureNickname = LocalManager.getNickname();
     _loadMessages();
-
-    // 주기적으로 메시지 폴링 (예: 3초마다)
-    _pollTimer = Timer.periodic(Duration(seconds: 3), (_) => _loadMessages());
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _loadMessages());
   }
 
   @override
@@ -82,7 +63,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
     try {
-      final fetched = await ChatService().fetchMessages(widget.roomId);
+      final fetched = await RunningChatService().fetchMessages(widget.roomId);
       setState(() {
         _messages
           ..clear()
@@ -96,71 +77,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
   }
 
-  Future<bool> _requestPermissions() async {
-    if (Platform.isAndroid) {
-      final statuses = await [Permission.camera, Permission.storage].request();
-      return statuses.values.every((s) => s.isGranted);
-    } else {
-      final statuses = await [Permission.camera, Permission.photos].request();
-      return statuses.values.every((s) => s.isGranted);
-    }
-  }
-
-  Future<void> _showImageSourceActionSheet() async {
-    if (!await _requestPermissions()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('권한이 필요합니다. 설정에서 허용해주세요.')),
-      );
-      return;
-    }
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Wrap(children: [
-          ListTile(
-            leading: Icon(Icons.photo_library),
-            title: Text('갤러리'),
-            onTap: () {
-              Navigator.pop(context);
-              _pickImage(ImageSource.gallery);
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.camera_alt),
-            title: Text('카메라'),
-            onTap: () {
-              Navigator.pop(context);
-              _pickImage(ImageSource.camera);
-            },
-          ),
-        ]),
-      ),
-    );
-  }
-
-  Future<void> _pickImage(ImageSource src) async {
-    final XFile? picked = await _picker.pickImage(source: src);
-    if (picked == null) return;
-    setState(() => _selectedImageFile = File(picked.path));
-
-    // 선택한 이미지 즉시 전송
-    await _sendMessage(imageFile: _selectedImageFile);
-  }
-
-  Future<void> _sendMessage({String? text, File? imageFile}) async {
-    if ((text == null || text.trim().isEmpty) && imageFile == null) return;
+  Future<void> _sendMessage({required String text}) async {
+    if (text.trim().isEmpty) return;
 
     setState(() => _isLoading = true);
     try {
-      await ChatService().sendMessageHttp(
+      await RunningChatService().sendMessage(
         roomId: widget.roomId,
-        message: (text == null || text.trim().isEmpty) ? null : text.trim(),
-        imageFile: imageFile,
+        message: text.trim(),
       );
       _textController.clear();
-      setState(() => _selectedImageFile = null);
 
-      final updated = await ChatService().fetchMessages(widget.roomId);
+      final updated = await RunningChatService().fetchMessages(widget.roomId);
       setState(() {
         _messages
           ..clear()
@@ -184,7 +112,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
       }
@@ -196,32 +124,35 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final newTitle = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('방 제목 수정'),
+        title: const Text('방 제목 수정'),
         content: TextField(
           controller: controller,
-          decoration: InputDecoration(hintText: '새 제목'),
+          decoration: const InputDecoration(hintText: '새 제목'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(context, controller.text?.trim()), child: Text('확인')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text?.trim()),
+            child: const Text('확인'),
+          ),
         ],
       ),
     );
     if (newTitle != null && newTitle.isNotEmpty && newTitle != _roomTitle) {
       setState(() => _roomTitle = newTitle);
-      await ChatService().updateRoomTitle(widget.roomId, newTitle);
+      await RunningChatService().updateRoomTitle(widget.roomId, newTitle);
     }
   }
 
   Future<void> _togglePublic() async {
     final newState = !_isPublic;
     setState(() => _isPublic = newState);
-    await ChatService().updateRoomVisibility(widget.roomId, newState);
+    await RunningChatService().updateRoomVisibility(widget.roomId, newState);
   }
 
   Future<void> _leaveRoomAndNavigate() async {
     try {
-      await ChatService().leaveRoom(widget.roomId);
+      await RunningChatService().leaveRoom(widget.roomId);
     } catch (_) {
       // 에러 무시
     }
@@ -231,12 +162,153 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
+  Future<void> _confirmLeave() async {
+    final shouldLeave = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('채팅방 나가기'),
+        content: const Text('정말 채팅방에서 나가시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+    if (shouldLeave == true) {
+      await _leaveRoomAndNavigate();
+    }
+  }
+
+  /// 참가 요청 목록을 가져와서 다이얼로그로 띄우는 함수
+  Future<void> _showJoinRequestsDialog() async {
+    // 서버에서 참가 요청 목록 가져오기
+    List<JoinRequest> joinRequests = [];
+    try {
+      joinRequests = await RunningChatService().getJoinRequests(widget.roomId);
+    } catch (e) {
+      print('[ChatRoomScreen] 참가 요청 목록 조회 실패: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('참가 요청 목록을 불러오는 데 실패했습니다.')),
+      );
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        // 다이얼로그 내부에서 사용할 로컬 복사본
+        final List<JoinRequest> _localRequests = List.from(joinRequests);
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('참가 요청 목록'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: _localRequests.isEmpty
+                    ? const Center(child: Text('새 참가 요청이 없습니다.'))
+                    : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _localRequests.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final req = _localRequests[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        // 서버 응답에 프로필 이미지 URL이 없으면, 닉네임 첫 글자로 대체
+                        child: Text(req.requesterUsername.isNotEmpty
+                            ? req.requesterUsername[0]
+                            : '?'),
+                      ),
+                      title: Text(req.requesterUsername),
+                      subtitle: Text(
+                        '${req.requestedAt.month.toString().padLeft(2, '0')}-'
+                            '${req.requestedAt.day.toString().padLeft(2, '0')} '
+                            '${req.requestedAt.hour.toString().padLeft(2, '0')}:'
+                            '${req.requestedAt.minute.toString().padLeft(2, '0')}',
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextButton(
+                            onPressed: () async {
+                              try {
+                                await RunningChatService()
+                                    .acceptJoinRequest(req.requestId);
+                                setStateDialog(() {
+                                  _localRequests.removeAt(index);
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        '${req.requesterUsername} 님 참가를 수락했습니다.'),
+                                  ),
+                                );
+                              } catch (e) {
+                                print('[ChatRoomScreen] 참가 요청 수락 실패: $e');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('참가 요청 수락에 실패했습니다.')),
+                                );
+                              }
+                            },
+                            child: const Text(
+                              '수락',
+                              style: TextStyle(color: Colors.blue),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              setStateDialog(() {
+                                _localRequests.removeAt(index);
+                              });
+                            },
+                            child: const Text(
+                              '거절',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('닫기'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _onAddPressed() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('이미지 첨부 기능은 지원되지 않습니다.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: Color(0xFFF0F0F3),
+      backgroundColor: const Color(0xFFF0F0F3),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _confirmLeave,
+        ),
         title: GestureDetector(
           onTap: _editRoomTitle,
           child: Text(_roomTitle),
@@ -247,21 +319,23 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             onPressed: _togglePublic,
           ),
           IconButton(
-            icon: Icon(Icons.menu), // 샌드위치 메뉴
+            icon: const Icon(Icons.menu),
             onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
           ),
         ],
       ),
+
+      // —————— Drawer: 상단에 참가자 리스트, 하단에 버튼 세 개 배치 ——————
       endDrawer: Drawer(
         child: SafeArea(
           child: Column(
             children: [
-              // 1. 참가자 리스트
+              // ─── 참가자 리스트 (Expanded)
               Expanded(
                 child: ListView.separated(
-                  padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                   itemCount: _participants.length,
-                  separatorBuilder: (_, __) => SizedBox(height: 12),
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (_, index) {
                     final p = _participants[index];
                     return Row(
@@ -270,10 +344,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           radius: 20,
                           backgroundImage: NetworkImage(p['avatarUrl']!),
                         ),
-                        SizedBox(width: 12),
+                        const SizedBox(width: 12),
                         Text(
                           p['nickname']!,
-                          style: TextStyle(fontSize: 16),
+                          style: const TextStyle(fontSize: 16),
                         ),
                       ],
                     );
@@ -281,9 +355,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 ),
               ),
 
-              // 2. 러닝하기 버튼
+              // ─── 참가 대기 버튼
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
+                child: OutlinedButton(
+                  onPressed: _showJoinRequestsDialog,
+                  child: const Text('참가 대기'),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFCCCCCC)),
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+
+              // ─── 러닝하기 버튼
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.push(
@@ -291,84 +381,87 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       MaterialPageRoute(builder: (_) => RunningScreen()),
                     );
                   },
-                  child: Text('러닝하기'),
+                  child: const Text('러닝하기'),
                   style: ElevatedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    side: const BorderSide(color: Color(0xFFCCCCCC)),
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),
-              SizedBox(height: 12),
 
-              // 3. 채팅방 나가기 버튼
+              // ─── 채팅방 나가기 버튼
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
                 child: OutlinedButton(
-                  onPressed: _leaveRoomAndNavigate,
-                  child: Text('채팅방 나가기'),
+                  onPressed: _confirmLeave,
+                  child: const Text('채팅방 나가기'),
                   style: OutlinedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    side: const BorderSide(color: Color(0xFFCCCCCC)),
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),
-              SizedBox(height: 16),
             ],
           ),
         ),
       ),
+
+      // ——— 채팅 본문 ———
       body: Column(
         children: [
           // 채팅 메시지 영역
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: _messages.length,
-              itemBuilder: (_, i) {
-                final msg = _messages[i];
-                return FutureBuilder<String>(
-                  future: _myNickname,
-                  builder: (context, snapshot) {
-                    final myNick = snapshot.data ?? '';
+            child: FutureBuilder<String>(
+              future: _futureNickname,
+              builder: (context, snapshot) {
+                final myNick = snapshot.data ?? '';
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  itemCount: _messages.length,
+                  itemBuilder: (_, i) {
+                    final msg = _messages[i];
                     final isMe = msg.sender == myNick;
                     return Align(
                       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
-                        margin: EdgeInsets.symmetric(vertical: 4),
-                        padding: msg.imageUrl != null ? EdgeInsets.zero : EdgeInsets.all(12),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isMe ? Color(0xFFE1B08C) : Colors.white,
+                          color: isMe ? const Color(0xFFE1B08C) : Colors.white,
                           borderRadius: BorderRadius.circular(8),
-                          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            )
+                          ],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (!isMe)
                               Padding(
-                                padding: EdgeInsets.only(bottom: 4),
+                                padding: const EdgeInsets.only(bottom: 4),
                                 child: Text(
                                   msg.sender,
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
-                            if (msg.imageUrl != null)
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  msg.imageUrl!,
-                                  width: 200,
-                                  height: 200,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Icon(Icons.broken_image),
-                                ),
-                              ),
-                            if (msg.message.isNotEmpty)
-                              Padding(
-                                padding: EdgeInsets.only(top: msg.imageUrl != null ? 4 : 0),
-                                child: Text(msg.message),
-                              ),
+                            Text(msg.message),
                           ],
                         ),
                       ),
@@ -378,17 +471,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               },
             ),
           ),
+
           // 입력창
           Container(
             color: Colors.white,
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               children: [
                 Expanded(
                   child: ChatBox(
                     controller: _textController,
                     onSend: _handleSend,
-                    onAdd: _showImageSourceActionSheet,
+                    onAdd: _onAddPressed,
                   ),
                 ),
               ],

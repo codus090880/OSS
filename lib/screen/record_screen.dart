@@ -58,7 +58,7 @@ class _RecordScreenState extends State<RecordScreen> {
   Future<void> _fetchReport() async {
     try {
       final dio = AuthService.dio;
-      final response = await dio.get('/report');
+      final response = await dio.get('/api/ai_feedback/');
       final data = response.data;
       final reportText = (data is Map && data.containsKey('report'))
           ? data['report'].toString()

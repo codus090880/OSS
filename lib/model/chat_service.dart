@@ -1,5 +1,3 @@
-// model/chat_service.dart
-
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
@@ -108,47 +106,6 @@ class ChatService {
       rethrow;
     }
   }
-
-  /// 4) 방 나가기 (DELETE /friend-chat/<room_id>/leave/)
-  Future<void> leaveRoom(int roomId) async {
-    try {
-      await _dio.delete('/friend-chat/$roomId/leave/');
-      print('[ChatService] leaveRoom 성공: $roomId');
-    } on DioError catch (err) {
-      print('[ChatService] leaveRoom 실패: ${err.message}');
-      rethrow;
-    }
-  }
 }
 
-// ────────────────────────────────────────────────────────────
-// 여기서부터 RoomManagement extension 추가
-// ────────────────────────────────────────────────────────────
 
-extension RoomManagement on ChatService {
-  /// 방 제목을 수정 (PUT /rooms/<room_id>/title/)
-  Future<void> updateRoomTitle(int roomId, String newTitle) async {
-    try {
-      await AuthService.dio.put(
-        '/rooms/$roomId/title/',
-        data: {'title': newTitle},
-      );
-      print('[RoomManagement] 방 제목 업데이트 성공');
-    } on DioError catch (err) {
-      print('[RoomManagement] 방 제목 업데이트 실패: ${err.message}');
-    }
-  }
-
-  /// 방 공개 상태를 수정 (PUT /rooms/<room_id>/visibility/)
-  Future<void> updateRoomVisibility(int roomId, bool isPublic) async {
-    try {
-      await AuthService.dio.put(
-        '/rooms/$roomId/visibility/',
-        data: {'isPublic': isPublic},
-      );
-      print('[RoomManagement] 공개 상태 업데이트 성공');
-    } on DioError catch (err) {
-      print('[RoomManagement] 공개 상태 업데이트 실패: ${err.message}');
-    }
-  }
-}
