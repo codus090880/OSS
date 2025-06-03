@@ -15,8 +15,88 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
   String? _selectedDistance;
   String? _selectedGender;
 
-  final List<String> distanceOptions = ['3~5km', '5~7km', '7~10km', '10km 이상'];
+  final List<Map<String, String>> distanceOptions = [
+    {'label': '3~5km', 'value': '3-5'},
+    {'label': '5~7km', 'value': '5-7'},
+    {'label': '7~10km', 'value': '7-10'},
+    {'label': '10km 이상', 'value': '10+'},
+  ];
   final List<String> genderOptions = ['성별 무관', '남성 선호', '여성 선호'];
+
+  Future<void> _startMatching() async {
+    if (_selectedDistance == null || _selectedGender == null) return;
+
+    // 매칭 화면 먼저 push
+    Navigator.pushNamed(context, '/matching');
+
+    try {
+      final token = await AuthService.storage.read(key: 'ACCESS_TOKEN');
+      await AuthService.dio.post(
+        '/match/preference/',
+        options: Options(headers: {
+          'Authorization': '',
+        }),
+        data: {
+          'preferred_gender': _selectedGender == '성별 무관'
+              ? 'any'
+              : (_selectedGender == '남성 선호' ? 'male' : 'female'),
+          'preferred_distance_range': _selectedDistance,
+          'allow_push': true,
+        },
+      );
+
+      // 위치 업데이트 먼저 호출
+      // 에뮬레이터라 테스트용 좌표(임의값)
+      await AuthService.dio.post(
+        '/location/update/',
+        data: {
+          'latitude': 37.5610,
+          'longitude': 126.9959,
+        },
+      );
+
+      // 매칭 요청
+      final response = await AuthService.dio.post(
+        '/match/start/',
+        data: {
+          'preferred_distance': _selectedDistance,
+          'preferred_gender': _selectedGender,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final result = response.data;
+        print('매칭 결과: $result');
+
+        if (result['matched'] == true) {
+          // 채팅방으로 이동
+          Navigator.pushReplacementNamed(
+            context,
+            '/chatroom',
+            arguments: {
+              'room_id': result['room_id'],
+              'room_name': result['room_name'],
+              'is_public': result['is_public'],
+            },
+          );
+        } else {
+          // 실패 → 실패 화면으로 이동
+          Navigator.pushReplacementNamed(context, '/matching_failed');
+        }
+      } else {
+        Navigator.pop(context); // MatchingScreen pop
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('매칭 요청 실패: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      Navigator.pop(context); // MatchingScreen pop
+      print('매칭 요청 실패: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('매칭 요청 실패')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +105,7 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
     return Scaffold(
       appBar: const PreferredSize(
         preferredSize: Size.fromHeight(60),
-        child: CustomTopBar(title: '러닝 메이트 정보'),
+        child: CustomTopBar(title: '1:1 매칭'),
       ),
       body: SafeArea(
         child: Padding(
@@ -45,12 +125,12 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: distanceOptions.map((label) {
-                    final isSelected = _selectedDistance == label;
+                  children: distanceOptions.map((item) {
+                    final isSelected = _selectedDistance == item['value'];
                     return Padding(
                       padding: const EdgeInsets.only(right: 12),
                       child: OutlinedButton(
-                        onPressed: () => setState(() => _selectedDistance = label),
+                        onPressed: () => setState(() => _selectedDistance = item['value']),
                         style: OutlinedButton.styleFrom(
                           backgroundColor: Colors.white,
                           side: BorderSide(
@@ -63,7 +143,7 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         ),
                         child: Text(
-                          label,
+                          item['label']!,
                           style: TextStyle(
                             color: Colors.black,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -74,7 +154,6 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
                   }).toList(),
                 ),
               ),
-
 
               const SizedBox(height: 35),
 
@@ -123,20 +202,12 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
                     ignoring: !isFormValid,
                     child: OutlinedButtonBox(
                       text: '매칭 시작하기',
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/matching',
-                          arguments: {
-                            'preferred_distance': _selectedDistance,
-                            'preferred_gender': _selectedGender,
-                          },
-                        );
-                      },
+                      onPressed: _startMatching,
                     ),
                   ),
                 ),
               ),
+
             ],
           ),
         ),

@@ -46,7 +46,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     try {
       final response = await AuthService.dio.post(
-        '/change-password',
+        '/api/change-password/',
         data: {
           'current_password': currentPassword,
           'new_password': newPassword,
