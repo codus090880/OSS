@@ -112,8 +112,6 @@ class MyApp extends StatelessWidget {
         '/profile': (_) => UserPageScreen(),
         '/evaluate': (_) => EvaluateScreen(),
         '/running': (_) => RunningtypeSelectScreen(),
-        '/write': (_) => WriteReviewScreen(),
-        '/read': (_) => ReadReviewScreen(),
         '/setting': (_) => Setting(),
         '/matching': (_) => MatchingScreen(),
         '/record': (_) => RecordScreen(),
@@ -125,14 +123,12 @@ class MyApp extends StatelessWidget {
         '/runningscreen' : (_) => RunningScreen(),
         '/levelguide': (_) => LevelGuideScreen(),
         '/reset': (_) => ResetPasswordScreen(),
-        '/course_notify': (_) => CourseNotifyScreen(),
         '/mate_notify': (_) => MateNotifyScreen(),
         '/delete_account': (_) => DeleteAccountScreen(),
         '/matching_list': (_) => MatchingListScreen(),
         '/matching_term': (_) => MatchingTermScreen(),
         '/term_of_use': (_) => TermOfUseScreen(),
         '/matching_failed': (_) => MatchingFailedScreen(),
-
       },
     );
   }
