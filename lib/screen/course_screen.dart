@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:prunners/screen/read_review_screen.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
@@ -69,7 +70,12 @@ class CourseScreen extends StatelessWidget {
               child: OutlinedButtonBox(
                 text: '리뷰 보러가기',
                 onPressed: () {
-                  Navigator.pushNamed(context, '/read');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReadReviewScreen(courseId: course.course_id),
+                    ),
+                  );
                 },
                 fontSize: 15,
               ),

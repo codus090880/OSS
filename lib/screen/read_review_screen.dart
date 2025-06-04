@@ -6,6 +6,7 @@ import 'package:prunners/widget/bottom_bar.dart';
 import 'package:intl/intl.dart';
 
 class Review {
+  final int reviewId;
   final String nickname;
   final int rating;
   final String comment;
@@ -13,6 +14,7 @@ class Review {
   final DateTime date;
 
   Review({
+    required this.reviewId,
     required this.nickname,
     required this.rating,
     required this.comment,
@@ -22,7 +24,8 @@ class Review {
 }
 
 class ReadReviewScreen extends StatefulWidget {
-  const ReadReviewScreen({super.key});
+  final int courseId;
+  const ReadReviewScreen({super.key, required this.courseId});
 
   @override
   State<ReadReviewScreen> createState() => _ReadReviewScreenState();
@@ -46,11 +49,12 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
       isLoading = true;
     });
     try {
-      final response = await dio.get('/course/1/reviews/');
+      final response = await dio.get('/course/{widget.courseId}/reviews/');
       if(response.statusCode == 200) {
         final List<dynamic> jsonData = response.data;
         setState(() {
           reviews = jsonData.map((e) => Review(
+            reviewId: e['review_id'],
             nickname: e['nickname'] ?? '알 수 없음',
             rating: e['rating'] ?? 0,
             comment: e['comment'] ?? '',
@@ -187,7 +191,7 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
                               onPressed: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (context) => CourseNotifyScreen()),
+                                  MaterialPageRoute(builder: (context) => CourseNotifyScreen(reviewId: review.reviewId)),
                                 );
                               },
                               child: const Text(

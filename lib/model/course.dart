@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class Course {
   final int course_id;
   final String title;
