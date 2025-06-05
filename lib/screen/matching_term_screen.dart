@@ -3,6 +3,7 @@ import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
 import 'package:dio/dio.dart';
 import 'package:prunners/model/auth_service.dart';
+import 'package:prunners/model/location_util.dart';
 
 class MatchingTermScreen extends StatefulWidget {
   const MatchingTermScreen({super.key});
@@ -26,32 +27,32 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
   Future<void> _startMatching() async {
     if (_selectedDistance == null || _selectedGender == null) return;
 
-    // 매칭 화면 먼저 push
+    // 매칭 화면 push
     Navigator.pushNamed(context, '/matching');
 
     try {
-      final token = await AuthService.storage.read(key: 'ACCESS_TOKEN');
+      // 위치 업데이트 -> 현재 위치 가져오기
+      final position = await LocationUtil.getCurrentPosition();
+      if (position != null) {
+        await AuthService.dio.post(
+          '/location/update/',
+          data: {
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+          },
+        );
+      } else {
+        print('[WARNING] 위치 정보 가져오기 실패 → 위치 업데이트 스킵');
+      }
+
       await AuthService.dio.post(
         '/match/preference/',
-        options: Options(headers: {
-          'Authorization': '',
-        }),
         data: {
           'preferred_gender': _selectedGender == '성별 무관'
               ? 'any'
               : (_selectedGender == '남성 선호' ? 'male' : 'female'),
           'preferred_distance_range': _selectedDistance,
           'allow_push': true,
-        },
-      );
-
-      // 위치 업데이트 먼저 호출
-      // 에뮬레이터라 테스트용 좌표(임의값)
-      await AuthService.dio.post(
-        '/location/update/',
-        data: {
-          'latitude': 37.5610,
-          'longitude': 126.9959,
         },
       );
 

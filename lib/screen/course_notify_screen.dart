@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:prunners/model/auth_service.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 
 class CourseNotifyScreen extends StatefulWidget {
-  const CourseNotifyScreen({super.key});
+  final int reviewId;
+  const CourseNotifyScreen({super.key, required this.reviewId});
 
   @override
   State<CourseNotifyScreen> createState() => _CourseNotifyScreenState();
@@ -22,11 +24,12 @@ class _CourseNotifyScreenState extends State<CourseNotifyScreen> {
       );
       return;
     }
-    final dio = Dio();
+    final dio = AuthService.dio;
     try {
       final response = await dio.post(
         '/course_notify/',
         data: {
+          'review_id': widget.reviewId,
           'content': notifyText,
         },
         options: Options(headers: {'Content-Type': 'application/json'}),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/model/course.dart';
+import 'package:prunners/model/location_util.dart';
 import 'course_screen.dart';
 import 'package:prunners/model/course_service.dart';
 
@@ -39,14 +40,35 @@ class _CourseRecommendedScreenState extends State<CourseRecommendedScreen> {
 
   final CourseService _courseService = CourseService();
 
-  late Future<List<Course>> _nearbyCourse;
-  late Future<List<Course>> _popularCourse;
+  Future<List<Course>>? _nearbyCourse;
+  Future<List<Course>>? _popularCourse;
 
   @override
   void initState() {
     super.initState();
-    _nearbyCourse = _courseService.getNearbyCourse();
+    _loadCourses();
+  }
+
+  Future<void> _loadCourses() async {
+    // 위치 먼저 가져오기
+    final position = await LocationUtil.getCurrentPosition();
+
+    if (position != null) {
+      final lat = position.latitude;
+      final lon = position.longitude;
+
+      // 위치 기반 nearby course 요청
+      _nearbyCourse = _courseService.getNearbyCourse(lat, lon);
+    } else {
+      print('[WARNING] 위치 정보 없음 → 기본 nearbyCourse 불러오기 생략 또는 fallback 처리 가능');
+      _nearbyCourse = Future.value([]);  // 빈 리스트 fallback
+    }
+
+    // 인기 코스는 위치 필요 없음
     _popularCourse = _courseService.getPopularCourse();
+
+    // 상태 업데이트
+    setState(() {});
   }
 
   @override
@@ -81,7 +103,7 @@ class _CourseRecommendedScreenState extends State<CourseRecommendedScreen> {
                 } else if (snapshot.hasError) {
                   return const Center(child: Text('코스가 존재하지 않습니다.'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: Text('코스가 존재하지 않습니다.'));
                 }
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -106,7 +128,7 @@ class _CourseRecommendedScreenState extends State<CourseRecommendedScreen> {
                 } else if (snapshot.hasError) {
                   return const Center(child: Text('코스가 존재하지 않습니다.'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: Text('코스가 존재하지 않습니다.'));
                 }
 
                 return SingleChildScrollView(

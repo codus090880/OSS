@@ -5,10 +5,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
 import 'package:prunners/widget/bottom_bar.dart';
-import '../model/local_manager.dart';
+import 'package:prunners/model/auth_service.dart';
 
 class WriteReviewScreen extends StatefulWidget {
-  const WriteReviewScreen({super.key});
+  final int courseId;
+  final String courseTitle;
+
+  const WriteReviewScreen({super.key, required this.courseId, required this.courseTitle});
 
   @override
   State<WriteReviewScreen> createState() => _WriteReviewScreenState();
@@ -39,10 +42,9 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
       );
       return;
     }
-    final dio = Dio();
-    try {
-      final String nickname = await LocalManager.getNickname();
 
+    final dio = AuthService.dio;
+    try {
       final imageFiles = await Future.wait(
         // 실제 파일 경로를 읽어 multipart 파일 생성(서버 전송 위함)
         selectedImages.map(
@@ -52,8 +54,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
 
       // FormData는 multipart/form-data HTTP 요청에 사용되는 형식
       final formData = FormData.fromMap({
-        'nickname': nickname,
-        'course_id': 42,
+        'course_id': widget.courseId,
         'rating': rating,
         'content': content,
         'images': imageFiles,
@@ -102,8 +103,8 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    '성북천 5km 코스',
+                  Text(
+                    widget.courseTitle,
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   Column(
