@@ -13,8 +13,8 @@ import 'package:prunners/model/push.dart';
 import 'package:prunners/model/local_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:prunners/screen/login_screen.dart';
-import 'package:prunners/screen/running_chat_screen.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 
 class Setting extends StatefulWidget {
   const Setting({Key? key}) : super(key: key);
@@ -36,6 +36,7 @@ class _SettingState extends State<Setting> {
     _MenuItem(icon: Icons.lock,         label: '비밀번호 변경'),
     _MenuItem(icon: Icons.description,  label: '이용 약관'),
     _MenuItem(icon: Icons.notifications,label: '푸쉬 알림'),
+    _MenuItem(icon: Icons.delete_sweep, label: '캐시 삭제'),
     _MenuItem(icon: Icons.logout,       label: '로그아웃'),
     _MenuItem(icon: Icons.delete,       label: '회원탈퇴'),
   ];
@@ -47,7 +48,6 @@ class _SettingState extends State<Setting> {
     _loadLocalProfileImage();
     _loadPushSetting();
   }
-
 
   Future<void> _loadProfileFromPrefs() async {
     final name = await LocalManager.getNickname();
@@ -171,6 +171,7 @@ class _SettingState extends State<Setting> {
       ),
     );
   }
+
   Widget _buildProfileAvatar() {
     if (_localImagePath != null) {
       return ClipOval(
@@ -194,7 +195,6 @@ class _SettingState extends State<Setting> {
       return Icon(Icons.account_circle, size: 48, color: Colors.grey);
     }
   }
-
 
   Widget _buildMenuRow(_MenuItem item) {
     Widget trailing;
@@ -227,13 +227,16 @@ class _SettingState extends State<Setting> {
             context,
             MaterialPageRoute(builder: (_) => ChangePasswordScreen()),
           );
-        }
-        /*else if (item.label == '이용 약관') {
+        } else if (item.label == '이용 약관') {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => TermOfUseScreen()),
           );
-        }*/
+        } else if (item.label == '푸쉬 알림') {
+        }
+        else if (item.label == '캐시 삭제') {
+          _showClearCacheDialog();
+        }
         else if (item.label == '로그아웃') {
           logout(context);
         }
@@ -241,14 +244,6 @@ class _SettingState extends State<Setting> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => DeleteAccountScreen()),
-          );
-        }
-        else if (item.label == '이용 약관') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChatRoomScreen(roomId: 1,),
-            ),
           );
         }
       },
@@ -260,7 +255,8 @@ class _SettingState extends State<Setting> {
             Icon(item.icon, size: 20, color: Colors.black),
             SizedBox(width: 12),
             Expanded(
-              child: Text(item.label,
+              child: Text(
+                item.label,
                 style: TextStyle(
                   fontSize: 16, fontWeight: FontWeight.w400,
                   color: Colors.black,
@@ -273,15 +269,38 @@ class _SettingState extends State<Setting> {
       ),
     );
   }
+
+  void _showClearCacheDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('캐시 삭제'),
+          content: Text('로컬에 저장된 모든 데이터를 삭제하시겠습니까?'),
+          actions: [
+            TextButton(
+              child: Text('아니오'),
+              onPressed: () => Navigator.of(context).pop(), // 다이얼로그 닫기
+            ),
+            TextButton(
+              child: Text('예'),
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                Navigator.of(context).pop(); // 다이얼로그 닫기
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('캐시가 삭제되었습니다.')),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
-class _MenuItem {
-  final IconData icon;
-  final String label;
-  const _MenuItem({required this.icon, required this.label});
-}
-
-// 로그아웃 함수
 Future<void> logout(BuildContext context) async {
   final storage = FlutterSecureStorage();
   await storage.delete(key: 'ACCESS_TOKEN');
@@ -291,4 +310,10 @@ Future<void> logout(BuildContext context) async {
     MaterialPageRoute(builder: (_) => LoginScreen()),
         (route) => false,
   );
+}
+
+class _MenuItem {
+  final IconData icon;
+  final String label;
+  const _MenuItem({required this.icon, required this.label});
 }

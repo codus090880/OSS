@@ -31,7 +31,7 @@ class RunningChatService {
   RunningChatService._internal();
 
   /// 1) 방 조회/생성 (GET /friend-chat/<friend_username>/)
-  Future<int> getOrCreateRoom(String friendUsername) async {
+  /*Future<int> getOrCreateRoom(String friendUsername) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/friend-chat/$friendUsername/',
@@ -43,7 +43,7 @@ class RunningChatService {
           '${err.response?.statusCode} ${err.message}');
       rethrow;
     }
-  }
+  }*/
 
   /// 2) 메시지 목록 가져오기 (GET /chat/rooms/<room_id>/messages/)
   Future<List<ChatMessage>> fetchMessages(int roomId) async {
@@ -87,7 +87,7 @@ class RunningChatService {
   /// 4) 방 나가기 (DELETE /friend-chat/<room_id>/leave/)
   Future<void> leaveRoom(int roomId) async {
     try {
-      await _dio.delete('/friend-chat/$roomId/leave/');
+      await _dio.delete('/rooms/<room_id>/title/');
       print('[RunningChatService] leaveRoom 성공: $roomId');
     } on DioError catch (err) {
       print('[RunningChatService] leaveRoom 실패: ${err.message}');
@@ -121,6 +121,33 @@ class RunningChatService {
       print('[RunningChatService] acceptJoinRequest 성공: ${response.data?['message']}');
     } on DioError catch (err) {
       print('[RunningChatService] acceptJoinRequest 실패: ${err.response?.statusCode} ${err.message}');
+      rethrow;
+    }
+  }
+
+  /// 7) 참가자 목록 조회 (GET /rooms/<room_id>/user_list/)
+  Future<List<String>> fetchParticipants(int roomId) async {
+    try {
+      final response = await _dio.get<List<dynamic>>(
+        '/rooms/$roomId/user_list/',
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data == null) return [];
+
+        return data
+            .whereType<Map<String, dynamic>>()
+            .map((item) => item['nickname'] as String)
+            .toList();
+      } else {
+        print('[RunningChatService] fetchParticipants 비정상 상태코드: '
+            '${response.statusCode}');
+        return [];
+      }
+    } on DioError catch (err) {
+      print('[RunningChatService] fetchParticipants 실패: '
+          '${err.response?.statusCode} ${err.message}');
       rethrow;
     }
   }

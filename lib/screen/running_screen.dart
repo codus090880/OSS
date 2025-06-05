@@ -6,6 +6,7 @@ import 'package:prunners/widget/running_controller.dart';
 import 'package:prunners/model/auth_service.dart';
 import 'package:prunners/screen/profile_screen.dart';
 import 'package:prunners/screen/after_running.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class RunningScreen extends StatefulWidget {
   const RunningScreen({Key? key}) : super(key: key);
@@ -27,11 +28,13 @@ class _RunningScreenState extends State<RunningScreen> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('권한 에러: $e')));
     });
+    WakelockPlus.enable();
   }
 
   @override
   void dispose() {
     _controller.stop();
+    WakelockPlus.disable();
     super.dispose();
   }
 
@@ -77,36 +80,35 @@ class _RunningScreenState extends State<RunningScreen> {
     );
 
     if (shouldQuit == true) {
-      // 1) 러닝을 마치고 RunSummary를 받아온다
-      final summary = await _controller.finishRun();
-
-      // 2) PostRunScreen으로 이동 (현재 화면 제거)
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => PostRunScreen(summary: summary),
-        ),
-      );
+      // 여기서 바로 _finishAndUpload()를 호출
+      await _finishAndUpload();
     }
+    //뒤로가기를 막기 위해 항상 false 반환
     return false;
   }
 
   Future<void> _finishAndUpload() async {
+    // 1) 러닝을 마치고 RunSummary 얻기
     final summary = await _controller.finishRun();
 
     try {
+      // 2) 서버에 POST (/runhistory/)
       final resp = await AuthService.dio.post(
-        '/api/runs',
+        '/runhistory/',
         data: summary.toJson(),
       );
       if (resp.statusCode != 200) {
         throw Exception('서버 오류: ${resp.statusCode}');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('업로드 실패: $e')));
-      //return;
+      // 업로드 실패 시에도 일단 화면 이동은 막고 에러 메시지만 띄움
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('업로드 실패: $e')),
+      );
+      return;
     }
 
+    // 3) 업로드 성공 시 ProfileScreen으로 이동
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => ProfileScreen()),
     );

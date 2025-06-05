@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:prunners/widget/top_bar.dart';
-import 'chat_detail_screen.dart';
 import 'package:prunners/widget/bottom_bar.dart';
+import 'package:prunners/model/auth_service.dart';
+import 'chat_detail_screen.dart';
 
 class MatchingListScreen extends StatefulWidget {
   const MatchingListScreen({super.key});
@@ -11,72 +13,111 @@ class MatchingListScreen extends StatefulWidget {
 }
 
 class _MatchingListScreenState extends State<MatchingListScreen> {
-  final List<Map<String, dynamic>> chatRooms = [
-    {
-      'roomName': '아침 러닝',
-      'preference': '남성 선호',
-      'distance': '5~7km',
-      'users': [
-        {
-          'name': '홍길동',
-          'gender': '남성',
-          'mannerTemp': 38.0,
-          'level': 'Beginner',
-        },
-        {
-          'name': '김땡땡',
-          'gender': '남성',
-          'mannerTemp': 37.0,
-          'level': 'Advanced',
-        },
-      ],
-    },
-    {
-      'roomName': '야간 번개 러닝',
-      'preference': '성별 무관',
-      'distance': '3~5km',
-      'users': [
-        {
-          'name': '김아무개',
-          'gender': '여성',
-          'mannerTemp': 39.5,
-          'level': 'Intermediate',
-        },
-        {
-          'name': '도민준',
-          'gender': '남성',
-          'mannerTemp': 39.0,
-          'level': 'Intermediate',
-        },
-      ],
-    },
-    {
-      'roomName': '김철수, 김영희의 채팅방',
-      'preference': '성별 무관',
-      'distance': '7~10km',
-      'users': [
-        {
-          'name': '김철수',
-          'gender': '남성',
-          'mannerTemp': 39.5,
-          'level': 'Intermediate',
-        },
-        {
-          'name': '김영희',
-          'gender': '여성',
-          'mannerTemp': 38.5,
-          'level': 'Intermediate',
-        },
-      ],
-    },
-  ];
+  /// API로부터 받아올 공개 채팅방 목록 (room_id, title, distance_km 세 개만)
+  List<Map<String, dynamic>> _publicRooms = [];
 
-  void enterDetail(int index) {
-    final selectedChatRoomUsers = chatRooms[index]['users'];
+  /// 내가 이미 참여한 채팅방 ID (없으면 null)
+  int? _joinedRoomId;
+
+  bool _loadingRooms = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    // 공개 채팅방 목록과 내가 참여한 방 ID를 동시에 가져옵니다.
+    _fetchPublicRooms();
+    _fetchMyRoom();
+  }
+
+  /// 1) 주변 공개 채팅방 목록 조회
+  Future<void> _fetchPublicRooms() async {
+    setState(() {
+      _loadingRooms = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await AuthService.dio.get<List<dynamic>>(
+        '/chatrooms/public/nearby/',
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data != null) {
+          final rooms = data
+              .whereType<Map<String, dynamic>>()
+              .map((item) => {
+            'room_id': item['room_id'],
+            'title': item['title'],
+            'distance_km': item['distance_km'],
+          })
+              .toList();
+
+          setState(() {
+            _publicRooms = rooms;
+            _loadingRooms = false;
+          });
+        } else {
+          setState(() {
+            _publicRooms = [];
+            _loadingRooms = false;
+          });
+        }
+      } else {
+        setState(() {
+          _errorMessage =
+          '상태 코드 ${response.statusCode}로 방 목록을 가져오지 못했습니다.';
+          _loadingRooms = false;
+        });
+      }
+    } on DioError catch (err) {
+      if (err.response?.statusCode == 400) {
+        _errorMessage = '위치 정보가 없습니다. 위치 권한을 확인해주세요.';
+      } else if (err.response?.statusCode == 403) {
+        _errorMessage = '공개 채팅방 목록을 볼 권한이 없습니다.';
+      } else {
+        _errorMessage = '방 목록을 불러오는 중 오류가 발생했습니다.';
+      }
+      setState(() {
+        _loadingRooms = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = '알 수 없는 오류가 발생했습니다.';
+        _loadingRooms = false;
+      });
+    }
+  }
+
+  /// 2) 내가 이미 참여한 채팅방 ID 조회
+  Future<void> _fetchMyRoom() async {
+    try {
+      final response = await AuthService.dio.get<Map<String, dynamic>>(
+        '/chatrooms/my/',
+      );
+      final roomId = response.data?['room_id'] as int?;
+      setState(() {
+        _joinedRoomId = roomId;
+      });
+    } catch (e) {
+      // 에러가 나도 별도 처리 없이 참여한 방이 없는 것으로 간주
+      setState(() {
+        _joinedRoomId = null;
+      });
+    }
+  }
+
+  void _enterDetail(int index) {
+    final room = _publicRooms[index];
+    final roomId = room['room_id'] as int;
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ChatDetailScreen(users: selectedChatRoomUsers),
+        builder: (context) => ChatDetailScreen(
+          roomId: roomId,
+        ),
       ),
     );
   }
@@ -86,11 +127,12 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
     return Scaffold(
       appBar: const PreferredSize(
         preferredSize: Size.fromHeight(60),
-        child: CustomTopBar(title: '러닝 메이트 채팅방'),
+        child: CustomTopBar(title: '주변 공개 채팅방'),
       ),
       body: SafeArea(
         child: Column(
           children: [
+            // 1:1 매칭 버튼
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Column(
@@ -104,13 +146,14 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 12), // 설명과 버튼 사이 여백
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: Color(0xFF333333), width: 1),
+                        side:
+                        const BorderSide(color: Color(0xFF333333), width: 1),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -132,59 +175,95 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
                 ],
               ),
             ),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.only(top: 0, bottom: 8),
-                itemCount: chatRooms.length,
-                itemBuilder: (context, index) {
-                  final room = chatRooms[index];
-                  return GestureDetector(
-                    onTap: () => enterDetail(index),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.grey.shade300,
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.group, size: 40),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  room['roomName'] ?? '(제목 없음)',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '# ${room['preference'] ?? '정보 없음'}   # ${room['distance'] ?? '거리 정보 없음'}',
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-                              ],
+
+            // API 호출 결과에 따라 로딩 / 에러 / 방 목록 표시
+            if (_loadingRooms)
+              const Expanded(
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_errorMessage != null)
+              Expanded(
+                child: Center(
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              )
+            else if (_publicRooms.isEmpty)
+                const Expanded(
+                  child: Center(child: Text('주변에 공개 채팅방이 없습니다.')),
+                )
+              else
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(top: 0, bottom: 8),
+                    itemCount: _publicRooms.length,
+                    itemBuilder: (context, index) {
+                      final room = _publicRooms[index];
+                      final title = room['title'] as String? ?? '(제목 없음)';
+                      final distance = room['distance_km'] as num? ?? 0;
+                      final roomId = room['room_id'] as int;
+
+                      // 이미 참여한 방이면 테두리를 초록색으로, 아니면 기본 회색
+                      final isJoined = (_joinedRoomId != null && _joinedRoomId == roomId);
+
+                      return GestureDetector(
+                        onTap: () => _enterDetail(index),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isJoined
+                                  ? Colors.green
+                                  : Colors.grey.shade300,
+                              width: 2,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.room,
+                                size: 40,
+                                color: isJoined ? Colors.green : Colors.blue,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 방 제목
+                                    Text(
+                                      title,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: isJoined ? Colors.green : Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // 거리 정보만 표시
+                                    Text(
+                                      '거리: ${distance.toStringAsFixed(1)}km',
+                                      style: const TextStyle(color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
           ],
         ),
       ),
-
       bottomNavigationBar: SafeArea(
         top: false,
         child: BottomNavBar(

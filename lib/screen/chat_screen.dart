@@ -8,6 +8,7 @@ import 'package:prunners/widget/chat_box.dart';
 import 'package:prunners/model/chat_service.dart';
 import 'package:prunners/model/auth_service.dart';
 
+/// 채팅 화면
 class ChatScreen extends StatefulWidget {
   final String friendUsername;
   final String friendAvatarUrl;
@@ -25,16 +26,15 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   int? _roomId;
   final List<ChatMessage> _messages = [];
-
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
 
   File? _selectedImageFile;
   bool _isLoading = false;
-
   Timer? _pollTimer;
 
+  // 내 닉네임 조회 (로컬 스토리지에서 가져올 때 사용)
   Future<String> get _myNickname async {
     final stored = await AuthService.storage.read(key: 'MY_NICKNAME');
     return stored ?? '';
@@ -45,6 +45,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _initializeChat();
 
+    // 3초마다 메시지 자동 갱신
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       if (_roomId == null) return;
       try {
@@ -69,6 +70,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  /// 1) 친구 채팅방 조회 또는 생성 → roomId 저장 → 초기 메시지 로드
   Future<void> _initializeChat() async {
     setState(() => _isLoading = true);
     try {
@@ -90,6 +92,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// 2) 보내기 버튼 눌렀을 때: 텍스트와(또는)이미지 전송
   Future<void> _handleSend() async {
     final text = _textController.text.trim();
     if ((text.isEmpty) && _selectedImageFile == null) return;
@@ -119,6 +122,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// 3) 카메라/갤러리 권한 요청
   Future<bool> _requestPermissions() async {
     if (Platform.isAndroid) {
       final statuses = await [Permission.camera, Permission.storage].request();
@@ -129,6 +133,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// 4) 이미지 선택용 바텀 시트
   Future<void> _showImageSourceActionSheet() async {
     if (!await _requestPermissions()) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -161,12 +166,14 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// 5) 실제로 이미지 파일 선택
   Future<void> _pickImage(ImageSource src) async {
     final XFile? picked = await _picker.pickImage(source: src);
     if (picked == null) return;
     setState(() => _selectedImageFile = File(picked.path));
   }
 
+  /// 6) 채팅 화면에서 스크롤을 맨 아래로 이동
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -188,9 +195,15 @@ class _ChatScreenState extends State<ChatScreen> {
         child: CustomTopBar(
           titleWidget: Row(
             children: [
+              // 1) 프로필 이미지가 비어 있을 때 기본 아이콘 표시
               CircleAvatar(
                 radius: 16,
-                backgroundImage: NetworkImage(widget.friendAvatarUrl),
+                backgroundImage: widget.friendAvatarUrl.isNotEmpty
+                    ? NetworkImage(widget.friendAvatarUrl)
+                    : null,
+                child: widget.friendAvatarUrl.isEmpty
+                    ? const Icon(Icons.person, color: Colors.white)
+                    : null,
               ),
               const SizedBox(width: 8),
               Text(widget.friendUsername),
@@ -202,6 +215,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Column(
             children: [
+              // 로딩 중이고 메시지가 비어 있을 때만 전체 로딩 인디케이터 표시
               if (_isLoading && _messages.isEmpty)
                 const Expanded(child: Center(child: CircularProgressIndicator()))
               else
@@ -212,8 +226,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       final myNick = snapshot.data ?? '';
                       return ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         itemCount: _messages.length,
                         itemBuilder: (_, i) {
                           final msg = _messages[i];
@@ -224,12 +237,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                 : Alignment.centerLeft,
                             child: Container(
                               margin: const EdgeInsets.symmetric(vertical: 4),
-                              padding: msg.imageUrl != null
+                              padding: msg.imageUrl != null && msg.imageUrl!.isNotEmpty
                                   ? EdgeInsets.zero
                                   : const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color:
-                                isMe ? const Color(0xFFE1B08C) : Colors.white,
+                                color: isMe ? const Color(0xFFE1B08C) : Colors.white,
                                 borderRadius: BorderRadius.circular(8),
                                 boxShadow: const [
                                   BoxShadow(
@@ -242,6 +254,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // 보낸 사람 닉네임 (내가 아닌 경우에만)
                                   if (!isMe)
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 4),
@@ -253,7 +266,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                         ),
                                       ),
                                     ),
-                                  if (msg.imageUrl != null)
+                                  // 2) 이미지가 있을 때만 Image.network 호출
+                                  if (msg.imageUrl != null && msg.imageUrl!.isNotEmpty)
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
                                       child: Image.network(
@@ -265,10 +279,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                         const Icon(Icons.broken_image),
                                       ),
                                     ),
+                                  // 3) 텍스트 메시지가 있을 때만 텍스트 표시
                                   if (msg.message.isNotEmpty)
                                     Padding(
                                       padding: EdgeInsets.only(
-                                          top: msg.imageUrl != null ? 4 : 0),
+                                          top: (msg.imageUrl != null && msg.imageUrl!.isNotEmpty) ? 4 : 0
+                                      ),
                                       child: Text(msg.message),
                                     ),
                                 ],
@@ -280,10 +296,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     },
                   ),
                 ),
+
+              // 입력창(텍스트 + 이미지 첨부 버튼)
               Container(
                 color: Colors.white,
-                padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Row(
                   children: [
                     Expanded(
@@ -298,14 +315,19 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ],
           ),
+
+          // 메시지가 이미 로드되어 있고, 추가 전송/갱신 중일 때 상단에 작은 인디케이터 표시
           if (_isLoading && _messages.isNotEmpty)
             const Positioned(
               top: 8,
               left: 0,
               right: 0,
               child: Center(
-                child:
-                SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
             ),
         ],

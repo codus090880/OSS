@@ -3,10 +3,11 @@ import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
 import 'package:prunners/model/auth_service.dart';
 
+/// 채팅 메시지 모델
 class ChatMessage {
-  final String sender;    // 서버가 내려주는 'sender' (닉네임 혹은 이메일)
-  final String message;   // 텍스트
-  final String? imageUrl; // 이미지 URL (없으면 null)
+  final String sender;    // 서버가 내려주는 'sender' 필드
+  final String message;   // 서버가 내려주는 'message' 필드
+  final String? imageUrl; // 서버가 내려주는 'image_url' 필드 (optional)
 
   ChatMessage({
     required this.sender,
@@ -23,15 +24,18 @@ class ChatMessage {
   }
 }
 
+/// 채팅 서비스 (singleton)
 class ChatService {
   static final ChatService _instance = ChatService._internal();
   factory ChatService() => _instance;
 
-  final Dio _dio = AuthService.dio;
+  final Dio _dio = AuthService.dio; // JWT 인터셉터 적용된 Dio
 
   ChatService._internal();
 
-  /// 1) 방 조회/생성 (GET /friend-chat/<friend_username>/)
+  /// 1) 방 조회/생성
+  ///    GET  /friend-chat/<friend_username>/
+  ///    Response: { "room_id": int }
   Future<int> getOrCreateRoom(String friendUsername) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -41,12 +45,14 @@ class ChatService {
       return roomId;
     } on DioError catch (err) {
       print('[ChatService] getOrCreateRoom 실패: '
-          '${err.response?.statusCode} ${err.message}');
+          'status=${err.response?.statusCode}, data=${err.response?.data}');
       rethrow;
     }
   }
 
-  /// 2) 메시지 목록 가져오기 (GET /friend-chat/messages/<room_id>/)
+  /// 2) 메시지 조회
+  ///    GET  /friend-chat/messages/<room_id>/
+  ///    Response: List< { "sender": str, "message": str, "image_url": str|null } >
   Future<List<ChatMessage>> fetchMessages(int roomId) async {
     try {
       final response = await _dio.get<List<dynamic>>(
@@ -55,57 +61,65 @@ class ChatService {
       final data = response.data;
       if (data == null) return [];
       return data
-          .map((item) => ChatMessage.fromJson(item as Map<String, dynamic>))
+          .cast<Map<String, dynamic>>()
+          .map((json) => ChatMessage.fromJson(json))
           .toList();
     } on DioError catch (err) {
       print('[ChatService] fetchMessages 실패: '
-          '${err.response?.statusCode} ${err.message}');
+          'status=${err.response?.statusCode}, data=${err.response?.data}');
       return [];
     }
   }
 
-  /// 3) 메시지 전송 (POST multipart/form-data to /friend-chat/messages/<room_id>/)
-  ///    - 이제 'sender'나 'email'을 붙이지 않고, 서버가 헤더(JWT)에서 알아서 처리한다고 가정
+  /// 3) 메시지 전송
+  ///    POST multipart/form-data to /friend-chat/send_messages/<room_id>/
+  ///
+  ///    Request Body 필드:
+  ///      - room_id : int (필수)
+  ///      - message : String (optional)
+  ///      - image   : File   (optional)
+  ///
+  ///    Success Response: { "message": "전송 완료", "message_id": int }
   Future<void> sendMessageHttp({
     required int roomId,
     String? message,
     File? imageFile,
   }) async {
-    try {
-      final formData = FormData();
-      formData.fields.add(MapEntry('room_id', roomId.toString()));
+    // roomId는 URL path에서 이미 처리하기 때문에, body에도 "room_id" 필드를 반드시 추가해 달라는 스펙에 맞춥니다.
+    final formData = FormData();
+    formData.fields.add(MapEntry('room_id', roomId.toString()));
 
-      if (message != null && message.trim().isNotEmpty) {
-        formData.fields.add(MapEntry('message', message.trim()));
-      }
+    if (message != null && message.trim().isNotEmpty) {
+      formData.fields.add(MapEntry('message', message.trim()));
+    }
 
-      if (imageFile != null) {
-        final fileName = path.basename(imageFile.path);
-        formData.files.add(
-          MapEntry(
-            'image',
-            await MultipartFile.fromFile(
-              imageFile.path,
-              filename: fileName,
-            ),
+    if (imageFile != null) {
+      final fileName = path.basename(imageFile.path);
+      formData.files.add(
+        MapEntry(
+          'image',
+          await MultipartFile.fromFile(
+            imageFile.path,
+            filename: fileName,
           ),
-        );
-      }
-
-      final response = await _dio.post<Map<String, dynamic>>(
-        '/friend-chat/messages/$roomId/',
-        data: formData,
-        options: Options(contentType: 'multipart/form-data'),
+        ),
       );
+    }
 
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/friend-chat/send_messages/$roomId/',
+        data: formData,
+        options: Options(
+          contentType: 'multipart/form-data',
+        ),
+      );
       print('[ChatService] sendMessageHttp 성공: '
-          '${response.data?['message_id']}');
+          'message_id=${response.data?['message_id']}');
     } on DioError catch (err) {
       print('[ChatService] sendMessageHttp 실패: '
-          '${err.response?.statusCode} ${err.message}');
+          'status=${err.response?.statusCode}, data=${err.response?.data}');
       rethrow;
     }
   }
 }
-
-

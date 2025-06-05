@@ -31,7 +31,7 @@ class _RecordScreenState extends State<RecordScreen> {
   Future<void> _fetchRecords() async {
     try {
       final dio = AuthService.dio;
-      final response = await dio.get('/records');
+      final response = await dio.get('/runhistory/');
       final data = response.data as List<dynamic>;
 
       final grouped = <DateTime, List<RunSummary>>{};

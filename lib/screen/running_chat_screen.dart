@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:prunners/widget/chat_box.dart';
 import 'package:prunners/model/running_chat_service.dart';
@@ -26,6 +27,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late String _roomTitle;
   late bool _isPublic;
+
+  // ─── 메시지 관련 필드 ───
   final List<ChatMessage> _messages = [];
   Timer? _pollTimer;
   final TextEditingController _textController = TextEditingController();
@@ -34,12 +37,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   late Future<String> _futureNickname;
   bool _isLoading = false;
 
-  // 참가자 예시 리스트 (실제에는 서버에서 가져온 데이터로 대체)
-  final List<Map<String, String>> _participants = [
-    {'avatarUrl': 'https://via.placeholder.com/50', 'nickname': 'Alice'},
-    {'avatarUrl': 'https://via.placeholder.com/50', 'nickname': 'Bob'},
-    {'avatarUrl': 'https://via.placeholder.com/50', 'nickname': 'Charlie'},
-  ];
+  // ─── 참가자 목록을 문자열 리스트로 관리 (final 제거) ───
+  List<String> _participants = [];
 
   @override
   void initState() {
@@ -48,8 +47,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _isPublic = widget.initialIsPublic;
 
     _futureNickname = LocalManager.getNickname();
+
+    // 메시지 로드 + 주기적 폴링
     _loadMessages();
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _loadMessages());
+
+    // 참가자 목록 로드
+    _loadParticipants();
   }
 
   @override
@@ -60,6 +64,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     super.dispose();
   }
 
+  /// ─── 1) 채팅 메시지 가져오기 ───
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
     try {
@@ -77,6 +82,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
   }
 
+  /// ─── 2) 채팅 메시지 전송 ───
   Future<void> _sendMessage({required String text}) async {
     if (text.trim().isEmpty) return;
 
@@ -107,6 +113,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     await _sendMessage(text: text);
   }
 
+  /// ─── 3) 채팅 스크롤을 맨 아래로 이동 ───
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -119,6 +126,36 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
   }
 
+  /// ─── 4) 채팅방 참여자 목록 조회 ───
+  Future<void> _loadParticipants() async {
+    try {
+      final nicknames = await RunningChatService().fetchParticipants(widget.roomId);
+      setState(() {
+        _participants = nicknames;
+      });
+    } on DioError catch (err) {
+      if (err.response?.statusCode == 400) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('잘못된 요청입니다.')),
+        );
+      } else if (err.response?.statusCode == 403) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('채팅 참여자가 아닙니다.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('참가자 목록을 불러오는 데 실패했습니다.')),
+        );
+      }
+    } catch (e) {
+      print('[ChatRoomScreen] 참가자 목록 조회 중 예외: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('참가자 목록을 불러오는 데 오류가 발생했습니다.')),
+      );
+    }
+  }
+
+  /// ─── 5) 방 제목 수정 ───
   Future<void> _editRoomTitle() async {
     final controller = TextEditingController(text: _roomTitle);
     final newTitle = await showDialog<String>(
@@ -144,12 +181,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
   }
 
+  /// ─── 6) 공개/비공개 상태 토글 ───
   Future<void> _togglePublic() async {
     final newState = !_isPublic;
     setState(() => _isPublic = newState);
     await RunningChatService().updateRoomVisibility(widget.roomId, newState);
   }
 
+  /// ─── 7) 채팅방 나가기 ───
   Future<void> _leaveRoomAndNavigate() async {
     try {
       await RunningChatService().leaveRoom(widget.roomId);
@@ -185,9 +224,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
   }
 
-  /// 참가 요청 목록을 가져와서 다이얼로그로 띄우는 함수
+  /// ─── 8) 참가 요청 목록 다이얼로그 (기존과 동일) ───
   Future<void> _showJoinRequestsDialog() async {
-    // 서버에서 참가 요청 목록 가져오기
     List<JoinRequest> joinRequests = [];
     try {
       joinRequests = await RunningChatService().getJoinRequests(widget.roomId);
@@ -202,7 +240,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     await showDialog(
       context: context,
       builder: (context) {
-        // 다이얼로그 내부에서 사용할 로컬 복사본
         final List<JoinRequest> _localRequests = List.from(joinRequests);
 
         return StatefulBuilder(
@@ -221,7 +258,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     final req = _localRequests[index];
                     return ListTile(
                       leading: CircleAvatar(
-                        // 서버 응답에 프로필 이미지 URL이 없으면, 닉네임 첫 글자로 대체
                         child: Text(req.requesterUsername.isNotEmpty
                             ? req.requesterUsername[0]
                             : '?'),
@@ -325,28 +361,33 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ],
       ),
 
-      // —————— Drawer: 상단에 참가자 리스트, 하단에 버튼 세 개 배치 ——————
+      // ─── 참여자 목록을 Dynamic하게 렌더 ───
       endDrawer: Drawer(
         child: SafeArea(
           child: Column(
             children: [
-              // ─── 참가자 리스트 (Expanded)
               Expanded(
-                child: ListView.separated(
+                child: _participants.isEmpty
+                    ? const Center(child: Text('참가자가 없습니다.'))
+                    : ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                   itemCount: _participants.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (_, index) {
-                    final p = _participants[index];
+                    final nickname = _participants[index];
                     return Row(
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundImage: NetworkImage(p['avatarUrl']!),
+                          child: Text(
+                            nickname.isNotEmpty ? nickname[0] : '?',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          backgroundColor: const Color(0xFFBBBBBB),
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          p['nickname']!,
+                          nickname,
                           style: const TextStyle(fontSize: 16),
                         ),
                       ],
@@ -355,7 +396,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 ),
               ),
 
-              // ─── 참가 대기 버튼
+              // ─── 참가 대기 버튼 ───
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
                 child: OutlinedButton(
@@ -371,7 +412,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 ),
               ),
 
-              // ─── 러닝하기 버튼
+              // ─── 러닝하기 버튼 ───
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
                 child: OutlinedButton(
@@ -392,7 +433,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 ),
               ),
 
-              // ─── 채팅방 나가기 버튼
+              // ─── 채팅방 나가기 버튼 ───
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
                 child: OutlinedButton(
@@ -412,10 +453,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ),
       ),
 
-      // ——— 채팅 본문 ———
+      // ─── 채팅 본문 ───
       body: Column(
         children: [
-          // 채팅 메시지 영역
           Expanded(
             child: FutureBuilder<String>(
               future: _futureNickname,

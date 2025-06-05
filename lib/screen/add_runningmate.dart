@@ -7,7 +7,7 @@ import 'package:prunners/model/auth_service.dart';
 
 class RunningMate {
   final String nickname;
-  final String imageUrl;
+  final String? imageUrl;
 
   RunningMate({
     required this.nickname,
@@ -16,8 +16,8 @@ class RunningMate {
 
   factory RunningMate.fromJson(Map<String, dynamic> json) {
     return RunningMate(
-      nickname: json['nickname'],
-      imageUrl: json['profile_url'],
+      nickname: json['nickname'] as String,
+      imageUrl: json['imageUrl'] as String?, // JSON 키를 정확히 맞춰야 합니다.
     );
   }
 }
@@ -29,7 +29,7 @@ class AddRunningmate extends StatefulWidget {
 
 class _AddRunningmateState extends State<AddRunningmate> {
   final TextEditingController _controller = TextEditingController();
-  final Dio _dio = AuthService.dio;  // 인터셉터 적용된 dio
+  final Dio _dio = AuthService.dio;  // JWT 인터셉터가 이미 적용된 dio
   List<RunningMate> _results = [];
   bool _isLoading = false;
 
@@ -55,17 +55,37 @@ class _AddRunningmateState extends State<AddRunningmate> {
     });
 
     try {
+      print('🔍 검색 시작 - query: $query');
+      final fullUri = _dio.options.baseUrl + '/search_mates/?q=$query';
+      print('🔍 전체 요청 URL: $fullUri');
+
       final resp = await _dio.get(
         '/search_mates/',
         queryParameters: {'q': query},
       );
-      final data = resp.data as List;
+
+      print('✅ 응답 statusCode: ${resp.statusCode}');
+      print('✅ resp.data (type: ${resp.data.runtimeType}): ${resp.data}');
+
+      if (resp.statusCode != 200) {
+        throw Exception('서버 상태코드: ${resp.statusCode}');
+      }
+
+      // resp.data가 List냐를 확인
+      if (resp.data is! List) {
+        print('⛔️ resp.data가 List가 아닙니다. => ${resp.data.runtimeType}');
+        throw Exception('API 응답이 List 형식이 아닙니다.');
+      }
+
+      final dataList = (resp.data as List).cast<Map<String, dynamic>>();
       setState(() {
-        _results = data
-            .map((json) => RunningMate.fromJson(json as Map<String, dynamic>))
-            .toList();
+        _results = dataList.map((json) {
+          return RunningMate.fromJson(json);
+        }).toList();
       });
-    } catch (e) {
+    } catch (e, s) {
+      print('🚨 검색 중 예외 발생: $e');
+      print(s);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('검색 중 오류가 발생했습니다.')),
       );
@@ -183,11 +203,22 @@ class _AddRunningmateState extends State<AddRunningmate> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(28),
-                          child: Image.network(
-                            mate.imageUrl,
+                          child: mate.imageUrl != null
+                              ? Image.network(
+                            mate.imageUrl!,
                             width: 57,
                             height: 57,
                             fit: BoxFit.cover,
+                          )
+                              : Container(
+                            width: 57,
+                            height: 57,
+                            color: Colors.grey.shade200,
+                            child: Icon(
+                              Icons.person,
+                              color: Colors.grey.shade500,
+                              size: 32,
+                            ),
                           ),
                         ),
                         SizedBox(width: 12),

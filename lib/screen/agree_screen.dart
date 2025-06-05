@@ -5,6 +5,8 @@ import 'package:prunners/screen/profile_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:prunners/model/push.dart';
 
+import 'login_screen.dart';
+
 
 class AgreeScreen extends StatefulWidget {
   const AgreeScreen({super.key});
@@ -262,7 +264,7 @@ class _AgreeScreenState extends State<AgreeScreen> {
               await PushNotificationService.initialize();
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
               );
             },
           ) : AbsorbPointer(

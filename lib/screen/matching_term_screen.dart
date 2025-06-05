@@ -27,9 +27,6 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
   Future<void> _startMatching() async {
     if (_selectedDistance == null || _selectedGender == null) return;
 
-    // 매칭 화면 push
-    Navigator.pushNamed(context, '/matching');
-
     try {
       // 위치 업데이트 -> 현재 위치 가져오기
       final position = await LocationUtil.getCurrentPosition();
@@ -56,7 +53,16 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
         },
       );
 
-      // 매칭 요청
+      Navigator.pushNamed(
+        context,
+        '/matching',
+        arguments: {
+          'preferred_distance': _selectedDistance!,
+          'preferred_gender': _selectedGender!,
+        },
+      );
+
+      /* 매칭 요청
       final response = await AuthService.dio.post(
         '/match/start/',
         data: {
@@ -80,16 +86,8 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
               'is_public': result['is_public'],
             },
           );
-        } else {
-          // 실패 → 실패 화면으로 이동
-          Navigator.pushReplacementNamed(context, '/matching_failed');
         }
-      } else {
-        Navigator.pop(context); // MatchingScreen pop
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('매칭 요청 실패: ${response.statusCode}')),
-        );
-      }
+      } */
     } catch (e) {
       Navigator.pop(context); // MatchingScreen pop
       print('매칭 요청 실패: $e');

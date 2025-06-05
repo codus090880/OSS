@@ -5,7 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/rounded_shadow_box.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:prunners/screen/profile_screen.dart';
 
 class MarathonEvent {
   final String name;
@@ -65,7 +66,21 @@ class _HomeBodyState extends State<HomeBody> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkNicknameAndRedirect();
+    });
     _fetchEvents();
+  }
+
+  Future<void> _checkNicknameAndRedirect() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedNickname = prefs.getString('nickname');
+    if (storedNickname == null || storedNickname.isEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ProfileScreen()),
+      );
+    }
   }
 
   Future<void> _fetchEvents() async {

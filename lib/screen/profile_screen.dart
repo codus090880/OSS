@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -291,7 +290,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             try {
               final form = FormData();
               form.fields
-                ..add(MapEntry('nickname', nickname))
+                ..add(MapEntry('username', nickname))
                 ..add(MapEntry('gender', gender))
                 ..add(MapEntry('age', parsedAge.toString()))
                 ..add(MapEntry('height', parsedHeight.toString()))
