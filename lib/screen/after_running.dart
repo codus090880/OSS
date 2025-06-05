@@ -13,31 +13,48 @@ class PostRunScreen extends StatefulWidget {
 
 class _PostRunScreenState extends State<PostRunScreen> {
   KakaoMapController? _mapController;
+  bool _mapReady = false;
+  List<Polyline> _polylines = [];
+
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   void _onMapCreated(KakaoMapController controller) {
     _mapController = controller;
 
-    if (widget.summary.route.isNotEmpty) {
-      final LatLng firstPoint = widget.summary.route.first;
-      _mapController!.setCenter(firstPoint);
-      _mapController!.setLevel(
-        6, // 숫자가 클수록 지도가 확대됩니다. (1 = 최대 축소)
-        options: LevelOptions(
-          animate: Animate(duration: 500),
-          anchor: firstPoint,
-        ),
-      );
-    } else {
-      final LatLng defaultCenter = LatLng(37.5665, 126.9780);
-      _mapController!.setCenter(defaultCenter);
-      _mapController!.setLevel(
-        6,
-        options: LevelOptions(
-          animate: Animate(duration: 500),
-          anchor: defaultCenter,
-        ),
-      );
-    }
+    setState(() {
+      _mapReady = true;
+      _buildPolylinesAndMarkers();
+    });
+  }
+
+  void _buildPolylinesAndMarkers() {
+    final routePoints = widget.summary.route;
+    if (!_mapReady || routePoints.isEmpty) return;
+
+    final polyline = Polyline(
+      polylineId: 'run_route',
+      points: routePoints,
+      strokeColor: Colors.blue,
+      strokeWidth: 6,
+      strokeOpacity: 1.0,
+    );
+
+    setState(() {
+      _polylines = [polyline];
+    });
+
+    _mapController!
+        .fitBounds(routePoints)
+        .then((_) => _mapController!.setLevel(
+      1,
+      options: LevelOptions(
+        animate: Animate(duration: 500),
+      ),
+    ));
   }
 
   String _formatDateTime(DateTime dt) {
@@ -73,7 +90,11 @@ class _PostRunScreenState extends State<PostRunScreen> {
     final elapsedTimeText = summary.elapsedTime;           // "hh:mm:ss"
     final paceText = _formatPace(summary.averageSpeedKmh); // 평균 페이스
     final cadenceInt = summary.cadenceSpm.round();         // 케이던스
-    final calorieStr = summary.calories.toStringAsFixed(0); // 칼로리
+    final calorieStr = summary.calories.toStringAsFixed(0);// 칼로리
+
+    final centerPoint = summary.route.isNotEmpty
+        ? summary.route.first
+        : LatLng(37.5665, 126.9780);
 
     return Scaffold(
       appBar: AppBar(
@@ -86,6 +107,7 @@ class _PostRunScreenState extends State<PostRunScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // 1) 상단 정보
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Column(
@@ -134,7 +156,6 @@ class _PostRunScreenState extends State<PostRunScreen> {
                         ),
                       ],
                     ),
-                    // 평균 페이스
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -209,38 +230,12 @@ class _PostRunScreenState extends State<PostRunScreen> {
 
           const Divider(height: 1, color: Color(0xFFE0E0E0)),
 
+          // 2) 지도
           Expanded(
             child: KakaoMap(
               onMapCreated: _onMapCreated,
-
-              center: summary.route.isNotEmpty
-                  ? summary.route.first
-                  : LatLng(37.5665, 126.9780),
-
-              polylines: summary.route.isNotEmpty
-                  ? [
-                Polyline(
-                  polylineId: 'post_run_route',
-                  points: summary.route,
-                  strokeColor: Colors.blue,
-                  strokeOpacity: 1.0,
-                  strokeWidth: 6,
-                ),
-              ]
-                  : const <Polyline>[],
-
-              markers: summary.route.isNotEmpty
-                  ? [
-                Marker(
-                  markerId: 'start',
-                  latLng: summary.route.first,
-                ),
-                Marker(
-                  markerId: 'end',
-                  latLng: summary.route.last,
-                ),
-              ]
-                  : const <Marker>[],
+              center: centerPoint,
+              polylines: _polylines,
             ),
           ),
         ],

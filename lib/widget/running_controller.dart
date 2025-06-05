@@ -83,20 +83,28 @@ class RunningController {
 
   // 스텝(걸음수)
   int _initialStepCount = 0;
-  int _offsetStepCount = 0;
+  bool _initialStepSet = false;
+  int _pauseStepCount = 0; // 일시정지 시점의 총 걸음 수
+  int _resumeStepCount = 0; // 재시작 시점의 디바이스 걸음 수
   int stepsSinceStart = 0;
+  bool _isPaused = false;
+  bool _needsResumeReset = false;
 
   final GeminiRepositoryImpl _gemini;
   final FlutterTts _flutterTts = FlutterTts();
 
-  RunningController({ required this.onUpdate })
+  RunningController({required this.onUpdate})
       : _gemini = GeminiRepositoryImpl();
 
   /// 초기화: 체중 로드 → 권한 요청 → 초기 위치 가져오기 → 트래킹 시작
   Future<void> init() async {
     // 활동 인식 권한 요청
     if (!await Permission.activityRecognition.isGranted) {
-      await Permission.activityRecognition.request();
+      final result = await Permission.activityRecognition.request();
+      if (result != PermissionStatus.granted) {
+        debugPrint('⚠️ 활동 인식 권한이 거부되었습니다.');
+        // 권한이 없어도 다른 기능은 동작하도록 계속 진행
+      }
     }
 
     // 1) TTS+Gemini 세션 초기화
@@ -130,27 +138,67 @@ class RunningController {
     initialPosition = LatLng(pos.latitude, pos.longitude);
     onUpdate();
 
-    // 걸음수 스트림 구독 (초기값 확보 이후)
-    _stepSub = Pedometer.stepCountStream.listen(_onStepCount,
-        onError: (e) => debugPrint('StepCount error: \$e'));
+    // 5) 걸음 수 스트림 구독 (한 번만!)
+    try {
+      _stepSub = Pedometer.stepCountStream.listen(
+        _onStepCount,
+        onError: (e) => debugPrint('❌ StepCount error: $e'),
+      );
+      debugPrint('✅ Pedometer 스트림 구독 완료');
+    } catch (e) {
+      debugPrint('❌ Pedometer 스트림 구독 실패: $e');
+    }
 
-    // 5) 트래킹 시작
+    // 6) 트래킹 시작
     _startTimer();
     _startTracking();
   }
 
   void _onStepCount(StepCount event) {
-    stepsSinceStart = _offsetStepCount + (event.steps - _initialStepCount);
+    debugPrint('🚶 _onStepCount 호출됨: event.steps = ${event.steps}, isPaused = $_isPaused, needsReset = $_needsResumeReset');
+
+    // 최초 한 번: 초기 걸음 수만 세팅
+    if (!_initialStepSet) {
+      _initialStepCount = event.steps;
+      _initialStepSet = true;
+      debugPrint('✅ 초기 걸음 수(_initialStepCount) 설정: $_initialStepCount');
+      return;
+    }
+
+    // 재시작 후 첫 번째 콜백: 재시작 기준점 설정
+    if (_needsResumeReset) {
+      _resumeStepCount = event.steps;
+      _needsResumeReset = false;
+      debugPrint('🔄 재시작 기준점(_resumeStepCount) 설정: $_resumeStepCount');
+      return;
+    }
+
+    // 일시정지 상태에서는 걸음 수 업데이트 안 함
+    if (_isPaused) {
+      debugPrint('⏸️ 일시정지 상태이므로 걸음 수 업데이트 생략');
+      return;
+    }
+
+    // 걸음 수 계산
+    int currentSteps;
+    if (_resumeStepCount > 0) {
+      // 재시작 이후: 일시정지까지의 걸음 수 + 재시작 후 증가분
+      currentSteps = _pauseStepCount + (event.steps - _resumeStepCount);
+    } else {
+      // 최초 시작: 전체 걸음 수에서 초기 걸음 수 차감
+      currentSteps = event.steps - _initialStepCount;
+    }
+
+    // 음수 방지
+    stepsSinceStart = currentSteps > 0 ? currentSteps : 0;
+
+    debugPrint('▶ 계산된 stepsSinceStart = $stepsSinceStart (event: ${event.steps}, pause: $_pauseStepCount, resume: $_resumeStepCount)');
+
     onUpdate();
   }
 
   void _startTracking() {
     Position? _prevPos;
-
-    // 세션 시작 시 초기 걸음수 저장
-    Pedometer.stepCountStream.first.then((first) {
-      _initialStepCount = first.steps;
-    });
 
     if (initialPosition != null) {
       route.add(initialPosition!);
@@ -160,14 +208,14 @@ class RunningController {
     // Android: 5초마다 업데이트, 거리 필터는 0m
     final androidSettings = AndroidSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 0,                         // 거리 변화에 상관없이
+      distanceFilter: 0, // 거리 변화에 상관없이
       intervalDuration: const Duration(seconds: 5), // 5초마다 위치 요청
     );
 
     // iOS: distanceFilter만 지정 (intervalDuration은 지원 안 됨)
     final appleSettings = AppleSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 0,  // 0m 이동하지 않아도 업데이트
+      distanceFilter: 0, // 0m 이동하지 않아도 업데이트
       activityType: ActivityType.fitness, // 러닝 용도로 최적화
       pauseLocationUpdatesAutomatically: false,
     );
@@ -177,7 +225,7 @@ class RunningController {
     ).listen((pos) {
       route.add(LatLng(pos.latitude, pos.longitude));
 
-      // 거리 계산
+      // 1) 거리 계산
       if (_prevPos != null) {
         final segment = Geolocator.distanceBetween(
           _prevPos!.latitude, _prevPos!.longitude,
@@ -187,17 +235,28 @@ class RunningController {
       }
       _prevPos = pos;
 
-      // 평균 속도
+      // 2) 평균 속도 계산
       final secs = stopwatch.elapsed.inSeconds;
       if (secs > 0) {
         averageSpeed = (totalDistance / 1000) / (secs / 3600);
       }
       _speedHistory.add(averageSpeed);
 
-      // 칼로리
+      // 3) 케이던스 계산
+      debugPrint('▶ 현재 걸음 수: $stepsSinceStart 걸음');
+      if (secs > 0 && stepsSinceStart > 0) {
+        final currentCadence = stepsSinceStart / (secs / 60);
+        _cadenceHistory.add(currentCadence);
+      }
+
+      // 4) 칼로리 계산
       caloriesBurned = weightKg * (totalDistance / 1000) * 1.036;
 
-      stopwatch.start();
+      // 5) 스톱워치 시작 (이미 시작되어 있으면 무시됨)
+      if (!stopwatch.isRunning) {
+        stopwatch.start();
+      }
+
       onUpdate();
     });
   }
@@ -211,17 +270,26 @@ class RunningController {
 
   void togglePause() {
     if (stopwatch.isRunning) {
+      // 일시정지
+      debugPrint('⏸️ 일시정지 시작');
       stopwatch.stop();
       _posSub?.pause();
-      _stepSub?.pause();
-      _offsetStepCount = stepsSinceStart;
+      _isPaused = true;
+
+      // 현재까지의 걸음 수를 저장
+      _pauseStepCount = stepsSinceStart;
+      debugPrint('⏸️ 일시정지: _pauseStepCount = $_pauseStepCount');
     } else {
+      // 재시작
+      debugPrint('▶️ 재시작');
       stopwatch.start();
       _posSub?.resume();
-      _stepSub?.resume();
-      Pedometer.stepCountStream.first.then((event) {
-        _initialStepCount = event.steps;
-      });
+      _isPaused = false;
+
+      // 다음 콜백에서 재시작 기준점을 설정하도록 플래그 설정
+      _needsResumeReset = true;
+
+      debugPrint('▶️ 재시작 완료: _pauseStepCount = $_pauseStepCount, 다음 콜백에서 기준점 재설정 예정');
     }
     onUpdate();
   }
@@ -256,8 +324,9 @@ class RunningController {
 
   double get cadence {
     final secs = stopwatch.elapsed.inSeconds;
-    _cadenceHistory.add(stepsSinceStart / (secs / 60));
-    if (secs > 0) return stepsSinceStart / (secs / 60);
+    if (secs > 0 && stepsSinceStart > 0) {
+      return stepsSinceStart / (secs / 60);
+    }
     return 0;
   }
 
@@ -281,7 +350,7 @@ class RunningController {
           "현재 달린 거리는 ${(totalDistance / 1000).toStringAsFixed(1)}km, 평균 속도는 ${averageSpeed.toStringAsFixed(1)}km/h, 걸음 수는 $stepsSinceStart 걸음, 케이던스는 ${cadence.toStringAsFixed(1)}spm입니다.";
       try {
         await for (final response in _gemini.sendMessage(prompt)) {
-          debugPrint("📝 Gemini 응답: $response");    // ← 여기에 로그 추가
+          debugPrint("📝 Gemini 응답: $response");
           await _flutterTts.speak(response);
         }
       } catch (e, st) {
