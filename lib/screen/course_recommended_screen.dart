@@ -13,31 +13,6 @@ class CourseRecommendedScreen extends StatefulWidget {
 }
 
 class _CourseRecommendedScreenState extends State<CourseRecommendedScreen> {
-  // MockData
-  /*
-  final List<Course> nearbyCourses = [
-    Course(course_id: 1, title: '러닝 코스 1', distance: '3.5 km', location: '서울',
-      imagePath: 'assets/111.png', tags: ['#한강', '#초보자용', '#야경좋음'],),
-    Course(course_id: 2, title: '러닝 코스 2', distance: '3.5 km', location: '서울',
-      imagePath: 'assets/111.png', tags: ['#한강', '#초보자용', '#야경좋음'],),
-    Course(course_id: 3, title: '러닝 코스 3', distance: '5 km', location: '서울',
-      imagePath: 'assets/111.png', tags: ['#한강', '#초보자용', '#야경좋음'],),
-  ];
-
-  final List<Course> popularCourses = [
-    Course(course_id: 6, title: '러닝 코스 4', distance: '5 km', location: '서울',
-      imagePath: 'assets/111.png', tags: ['#한강', '#초보자용', '#야경좋음'],),
-    Course(course_id: 7, title: '러닝 코스 5', distance: '5 km', location: '서울',
-      imagePath: 'assets/111.png', tags: ['#한강', '#초보자용', '#야경좋음'],),
-    Course(course_id: 8, title: '러닝 코스 6', distance: '5 km', location: '서울',
-      imagePath: 'assets/111.png', tags: ['#한강', '#초보자용', '#야경좋음'],),
-    Course(course_id: 9, title: '러닝 코스 7', distance: '5 km', location: '서울',
-      imagePath: 'assets/111.png', tags: ['#한강', '#초보자용', '#야경좋음'],),
-    Course(course_id: 10, title: '러닝 코스 8', distance: '5 km', location: '서울',
-      imagePath: 'assets/111.png', tags: ['#한강', '#초보자용', '#야경좋음'],),
-  ];
-  */
-
   final CourseService _courseService = CourseService();
 
   Future<List<Course>>? _nearbyCourse;
@@ -52,7 +27,6 @@ class _CourseRecommendedScreenState extends State<CourseRecommendedScreen> {
   Future<void> _loadCourses() async {
     // 위치 먼저 가져오기
     final position = await LocationUtil.getCurrentPosition();
-
     if (position != null) {
       final lat = position.latitude;
       final lon = position.longitude;
@@ -60,7 +34,6 @@ class _CourseRecommendedScreenState extends State<CourseRecommendedScreen> {
       // 위치 기반 nearby course 요청
       _nearbyCourse = _courseService.getNearbyCourse(lat, lon);
     } else {
-      print('[WARNING] 위치 정보 없음 → 기본 nearbyCourse 불러오기 생략 또는 fallback 처리 가능');
       _nearbyCourse = Future.value([]);  // 빈 리스트 fallback
     }
 
@@ -118,7 +91,7 @@ class _CourseRecommendedScreenState extends State<CourseRecommendedScreen> {
               },
             ),
             const SizedBox(height: 50),
-            const Text('이번주 인기 러닝 코스', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w600)),
+            const Text('인기 러닝 코스', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w600)),
             const SizedBox(height: 20),
             FutureBuilder<List<Course>>(
               future: _popularCourse,
@@ -190,7 +163,7 @@ class CourseCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
               image: DecorationImage(
-                image: AssetImage(course.imagePath),
+                image: NetworkImage(course.imagePath),
                 fit: BoxFit.cover,
               ),
             ),
