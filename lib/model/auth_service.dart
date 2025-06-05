@@ -5,11 +5,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class AuthService {
   static final FlutterSecureStorage storage = FlutterSecureStorage();
   static final Dio dio = Dio(BaseOptions(
-    baseUrl: 'https://a10e-121-160-204-245.ngrok-free.app',
+    baseUrl: 'http://172.30.1.41:8000/',
   ));
 
   static final Dio authDio = Dio(BaseOptions(
-    baseUrl: 'https://a10e-121-160-204-245.ngrok-free.app',
+    baseUrl: 'http://172.30.1.41:8000/',
   ));
 
 
