@@ -26,12 +26,69 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
   void initState() {
     super.initState();
     // 공개 채팅방 목록과 내가 참여한 방 ID를 동시에 가져옵니다.
-    _fetchPublicRooms();
-    _fetchMyRoom();
+    //_fetchPublicRooms();
+    //_fetchMyRoom();
+    _fetchAllData();
+  }
+
+  Future<void> _fetchAllData() async {
+    setState(() { _loadingRooms = true; _errorMessage = null; });
+    try {
+      final results = await Future.wait([
+        AuthService.dio.get<List<dynamic>>('/chatrooms/public/nearby/'),
+        AuthService.dio.get<Map<String, dynamic>>('/chatrooms/my/')
+      ]);
+
+      // 1) 공개 방 목록 처리
+      final publicResponse = results[0] as Response<List<dynamic>>;
+      final List<Map<String, dynamic>> rooms = [];
+      if (publicResponse.statusCode == 200 && publicResponse.data != null) {
+        rooms.addAll(publicResponse.data!
+            .whereType<Map<String, dynamic>>()
+            .map((item) => {
+          'room_id': item['room_id'],
+          'title': item['title'],
+          'distance_km': item['distance_km'],
+        })
+        );
+      }
+      // 2) 내가 속한 방 ID 처리
+      final myResponse = results[1] as Response<Map<String, dynamic>>;
+      final joinedId = myResponse.data?['room_id'] as int?;
+
+      setState(() {
+        _publicRooms = rooms;
+        _joinedRoomId = joinedId;
+        _loadingRooms = false;
+      });
+    } on DioError catch (err) {
+      // 에러 핸들링 (둘 중 하나라도 에러면 _loadingRooms=false 하고 _errorMessage 세팅)
+      String message;
+      if (err.response?.statusCode == 400) {
+        message = '위치 정보가 없습니다. 위치 권한을 확인해주세요.';
+      } else if (err.response?.statusCode == 403) {
+        message = '공개 채팅방 목록을 볼 권한이 없습니다.';
+      } else {
+        message = '방 목록을 불러오는 중 오류가 발생했습니다.';
+      }
+      setState(() {
+        _loadingRooms = false;
+        _errorMessage = message;
+        _joinedRoomId = null;
+        _publicRooms = [];
+      });
+    } catch (e) {
+      setState(() {
+        _loadingRooms = false;
+        _errorMessage = '알 수 없는 오류가 발생했습니다.';
+        _joinedRoomId = null;
+        _publicRooms = [];
+      });
+    }
   }
 
   /// 1) 주변 공개 채팅방 목록 조회
-  Future<void> _fetchPublicRooms() async {
+  /*Future<void> _fetchPublicRooms() async {
     setState(() {
       _loadingRooms = true;
       _errorMessage = null;
@@ -106,7 +163,7 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
         _joinedRoomId = null;
       });
     }
-  }
+  }*/
 
   void _enterDetail(int index) {
     final room = _publicRooms[index];

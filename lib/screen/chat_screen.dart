@@ -8,6 +8,8 @@ import 'package:prunners/widget/chat_box.dart';
 import 'package:prunners/model/chat_service.dart';
 import 'package:prunners/model/auth_service.dart';
 
+import '../model/local_manager.dart';
+
 /// 채팅 화면
 class ChatScreen extends StatefulWidget {
   final String friendUsername;
@@ -35,10 +37,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _pollTimer;
 
   // 내 닉네임 조회 (로컬 스토리지에서 가져올 때 사용)
-  Future<String> get _myNickname async {
-    final stored = await AuthService.storage.read(key: 'MY_NICKNAME');
-    return stored ?? '';
-  }
+  Future<String> get _myNickname => LocalManager.getNickname();
 
   @override
   void initState() {
