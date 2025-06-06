@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:prunners/widget/bottom_bar.dart';
@@ -79,14 +80,38 @@ class _UserBodyState extends State<UserBody> {
   }
 
   Future<void> _fetchMannerTemp() async {
+    setState(() => _isLoading = true);
+
     try {
-      final resp = await AuthService.dio.get('/user/manner_temperature/');
+      // SharedPreferences에서 username(=nickname) 꺼내기
+      final username = await LocalManager.getNickname();
+
+      // GET 요청 시 queryParameters로 username을 넘겨줍니다.
+      final resp = await AuthService.dio.get(
+        '/manner_temp/',
+        queryParameters: {'username': username},
+      );
+
+      // 서버 응답 예시: { "username": "...", "manner_temp": 36.5 }
       final data = resp.data as Map<String, dynamic>;
+
       setState(() {
-        _mannerTemp = (data['temperature'] as num).toDouble();
+        _mannerTemp = (data['manner_temp'] as num).toDouble();
       });
+    } on DioError catch (e) {
+      // 에러 코드별 처리 (필요 시 UI에 토스트나 다이얼로그로 띄워도 됩니다)
+      if (e.response?.statusCode == 400) {
+        print('400: username 누락');
+      } else if (e.response?.statusCode == 404) {
+        print('404: 유저 없음');
+      } else if (e.response?.statusCode == 401) {
+        print('401: 인증 실패');
+      } else {
+        print('알 수 없는 오류: $e');
+      }
     } catch (e) {
-      // handle error if needed
+      // 기타 예외
+      print('매너 온도 조회 중 오류: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -94,7 +119,6 @@ class _UserBodyState extends State<UserBody> {
 
   final List<_MenuItem> _menuItems = const [
     _MenuItem(icon: Icons.book,             label: '나의 기록'),
-    _MenuItem(icon: Icons.workspace_premium,label: '나의 뱃지'),
     _MenuItem(icon: Icons.group,            label: '러닝 메이트'),
     _MenuItem(icon: Icons.settings,         label: '설정'),
   ];
@@ -266,12 +290,6 @@ class _UserBodyState extends State<UserBody> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => RecordScreen()),
-                            );
-                          }
-                          if (item.label == '나의 뱃지') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => BadgeScreen()),
                             );
                           }
                         },

@@ -89,9 +89,11 @@ class ChatService {
     final formData = FormData();
     formData.fields.add(MapEntry('room_id', roomId.toString()));
 
-    if (message != null && message.trim().isNotEmpty) {
-      formData.fields.add(MapEntry('message', message.trim()));
-    }
+    formData.fields.add(
+      MapEntry('message', (message != null && message.trim().isNotEmpty)
+          ? message.trim()
+          : ''),
+    );
 
     if (imageFile != null) {
       final fileName = path.basename(imageFile.path);

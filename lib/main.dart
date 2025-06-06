@@ -110,7 +110,6 @@ class MyApp extends StatelessWidget {
         '/signup': (_) => SignupScreen(),
         '/agree': (_) => AgreeScreen(),
         '/profile': (_) => UserPageScreen(),
-        '/evaluate': (_) => EvaluateScreen(),
         '/running': (_) => RunningtypeSelectScreen(),
         '/setting': (_) => Setting(),
         '/matching': (_) => MatchingScreen(),

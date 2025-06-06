@@ -56,10 +56,6 @@ class _MatchingTermScreen extends State<MatchingTermScreen> {
       Navigator.pushNamed(
         context,
         '/matching',
-        arguments: {
-          'preferred_distance': _selectedDistance!,
-          'preferred_gender': _selectedGender!,
-        },
       );
 
       /* 매칭 요청

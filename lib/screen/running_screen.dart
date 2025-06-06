@@ -4,12 +4,17 @@ import 'package:image_picker/image_picker.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:prunners/widget/running_controller.dart';
 import 'package:prunners/model/auth_service.dart';
-import 'package:prunners/screen/profile_screen.dart';
 import 'package:prunners/screen/after_running.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'evaluate_screen.dart';
+
+
 class RunningScreen extends StatefulWidget {
-  const RunningScreen({Key? key}) : super(key: key);
+  final int? roomId;
+
+  const RunningScreen({Key? key, this.roomId}) : super(key: key);
+
 
   @override
   State<RunningScreen> createState() => _RunningScreenState();
@@ -101,19 +106,36 @@ class _RunningScreenState extends State<RunningScreen> {
         throw Exception('서버 오류: ${resp.statusCode}');
       }
     } catch (e) {
-      // 업로드 실패 시에도 일단 화면 이동은 막고 에러 메시지만 띄움
+      // 업로드 실패 시 에러 메시지만 띄우고 진행
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('업로드 실패: $e')),
       );
-      return;
+      // 원한다면 여기서 return; 으로 이동을 막을 수도 있습니다.
     }
 
-    // 3) 업로드 성공 시 ProfileScreen으로 이동
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => ProfileScreen()),
-    );
+    // 3) roomId가 있으면, 방 ID를 서버에 추가로 전송
+    if (widget.roomId != null) {
+      try {
+        await AuthService.dio.post(
+          '/runchat/room/${widget.roomId}/run_finish/',
+        );
+      } catch (e) {
+        // 실패해도 에러 토스트만 띄우고 진행
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('채팅방 종료 처리 실패: $e')),
+        );
+      }
+      // 4) 방이 있으면 검사 화면(EvaluateScreen)으로 이동
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => EvaluateScreen(roomId: widget.roomId!)),
+      );
+    } else {
+      // roomId가 없으면 기존처럼 PostRunScreen으로 이동
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => PostRunScreen(summary: summary)),
+      );
+    }
   }
-
   @override
   Widget build(BuildContext context) {
     if (_controller.initialPosition == null) {

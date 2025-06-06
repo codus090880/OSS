@@ -13,46 +13,19 @@ class MatchingScreen extends StatefulWidget {
 }
 
 class _MatchingScreenState extends State<MatchingScreen> {
-  // 인자가 전달되지 않았을 때의 기본값 처리용
-  String? _preferredDistance;
-  String? _preferredGender;
-
-  bool _isRequesting = true;      // 매칭 요청 중인지 여부
-  String? _errorMessage;          // 에러 발생 시 보여줄 메시지
+  bool _isRequesting = true;   // 매칭 요청 중인지 여부
+  String? _errorMessage;       // 에러 발생 시 보여줄 메시지
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // arguments는 build()가 실행되기 전에 들어오므로,
-    // didChangeDependencies()에서 단 한 번만 읽어오도록 한다.
-    if (_preferredDistance == null && _preferredGender == null) {
-      final args = ModalRoute.of(context)?.settings.arguments;
-      if (args != null && args is Map<String, dynamic>) {
-        _preferredDistance = args['preferred_distance'] as String?;
-        _preferredGender = args['preferred_gender'] as String?;
-      }
-      // 인자를 읽어온 뒤, 서버 요청을 시작
-      _startMatchRequest();
-    }
+  void initState() {
+    super.initState();
+    // 화면이 로드되면 즉시 매칭 요청 시작
+    _startMatchRequest();
   }
 
   Future<void> _startMatchRequest() async {
-    if (_preferredDistance == null || _preferredGender == null) {
-      setState(() {
-        _isRequesting = false;
-        _errorMessage = '잘못된 매칭 정보입니다.';
-      });
-      return;
-    }
-
     try {
-      final response = await AuthService.dio.post(
-        '/match/start/',
-        data: {
-          'preferred_distance': _preferredDistance,
-          'preferred_gender': _preferredGender,
-        },
-      );
+      final response = await AuthService.dio.post('/match/start/');
 
       if (response.statusCode == 200) {
         final result = response.data;
@@ -71,7 +44,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
           );
           return;
         } else {
-          // matched == false인 경우: 대기열만 등록되고, 실제 매칭은 서버에서 알림 형태로 가정
+          // matched == false인 경우: 대기열에 등록만 된 상태
           setState(() {
             _isRequesting = false;
             _errorMessage = '매칭 대기열에 등록되었습니다. 잠시만 기다려주세요.';
@@ -85,7 +58,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
         });
       }
     } on DioError catch (err) {
-      // 400 등 서버에서 에러코드 보냈을 때
+      // 400 등 서버에서 에러코드를 보냈을 때
       String message;
       if (err.response?.statusCode == 400) {
         message = '[400] 대기열에 이미 참여 중입니다.';
@@ -105,9 +78,8 @@ class _MatchingScreenState extends State<MatchingScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    // 매칭 요청 중 뒤로가기 방지 혹은 취소 다이얼로그 띄우기
+    // 매칭 요청이 아직 진행 중이면 뒤로가기 막기
     if (_isRequesting) {
-      // 요청이 아직 진행 중이면 팝하지 않음
       return false;
     }
 
@@ -151,12 +123,12 @@ class _MatchingScreenState extends State<MatchingScreen> {
             const SnackBar(content: Text('오류가 발생했습니다. 잠시 후 다시 시도해주세요.')),
           );
         }
-      } catch (e) {
+      } catch (_) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('오류가 발생했습니다.')),
         );
       }
-      // true 반환 → 화면이 팝됨
+      // true 반환 → 뒤로 가기
       return true;
     }
 
@@ -185,15 +157,14 @@ class _MatchingScreenState extends State<MatchingScreen> {
               ),
               const SizedBox(height: 50),
 
-              // 요청 중일 때는 스피너, 아니면 상태 메시지/버튼 보여주기
+              // 요청 중일 때는 스피너, 아니면 상태 메시지 보여주기
               if (_isRequesting) ...[
                 const SpinKitCircle(
                   color: Colors.black,
                   size: 60.0,
                 ),
               ] else ...[
-                // 요청이 끝난 뒤, 에러나 대기열 안내 메시지를 보여줄 수 있음
-                if (_errorMessage != null) ...[
+                if (_errorMessage != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     child: Text(
@@ -202,7 +173,6 @@ class _MatchingScreenState extends State<MatchingScreen> {
                       style: const TextStyle(fontSize: 16, color: Colors.red),
                     ),
                   ),
-                ],
               ],
 
               const Spacer(),
@@ -213,7 +183,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
                   text: _isRequesting ? '취소하기' : '뒤로 가기',
                   onPressed: () async {
                     if (_isRequesting) {
-                      // 요청 중인 상태라면 취소 API 호출
+                      // 요청 중일 때 버튼 눌리면 곧바로 취소 API 호출
                       try {
                         final response = await AuthService.dio.post('/match/cancel/');
                         final message = response.data['message'] as String? ?? '취소되었습니다.';
@@ -230,15 +200,13 @@ class _MatchingScreenState extends State<MatchingScreen> {
                             const SnackBar(content: Text('오류가 발생했습니다. 잠시 후 다시 시도해주세요.')),
                           );
                         }
-                      } catch (e) {
+                      } catch (_) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('오류가 발생했습니다.')),
                         );
                       }
-                      // 취소 후 뒤로 돌아가기
                       Navigator.pop(context);
                     } else {
-                      // 매칭이 끝난 뒤라면 그냥 뒤로 가기
                       Navigator.pop(context);
                     }
                   },

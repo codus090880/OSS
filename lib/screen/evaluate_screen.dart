@@ -2,52 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:prunners/screen/mate_notify_screen.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
 import 'package:prunners/widget/bottom_bar.dart';
-import 'package:dio/dio.dart';
-import '../model/local_manager.dart';
+import 'package:prunners/model/auth_service.dart';
+import 'package:prunners/model/local_manager.dart';
 
 class MateEvaluationTarget {
   final String nickname;
-  final int sessionId;
+  final int roomId;
 
   MateEvaluationTarget({
     required this.nickname,
-    required this.sessionId,
+    required this.roomId,
   });
-
-  factory MateEvaluationTarget.fromJson(Map<String, dynamic> json) {
-    return MateEvaluationTarget(
-      nickname: json['nickname'],
-      sessionId: json['session_id'],
-    );
-  }
 
   Map<String, dynamic> toJson() {
     return {
       'nickname': nickname,
-      'session_id': sessionId,
+      'room_id': roomId,
     };
   }
 }
 
 class EvaluateScreen extends StatefulWidget {
-  const EvaluateScreen({super.key});
+  final int roomId;
+  const EvaluateScreen({super.key, required this.roomId});
 
   @override
   State<EvaluateScreen> createState() => _EvaluateScreenState();
 }
 
 class _EvaluateScreenState extends State<EvaluateScreen> {
-  // mockData
-  final List<MateEvaluationTarget> mates = [
-    MateEvaluationTarget(nickname: '홍길동', sessionId: 123),
-    MateEvaluationTarget(nickname: '김철수', sessionId: 123),
-    MateEvaluationTarget(nickname: '이영희', sessionId: 123),
-  ];
-
+  List<MateEvaluationTarget> mates = [];
+  bool isLoading = true;
   bool isPositive = true;
+
   List<String> selectedReasons = [];
   int currentIndex = 0;
+  PageController _pageController = PageController();
   MateEvaluationTarget get currentMate => mates[currentIndex];
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
 
   List<String> positiveReasons = [
     '시간 약속을 잘 지켰어요',
@@ -65,16 +63,43 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
     '불편하거나 무례하게 느껴졌어요',
   ];
 
-  /*
-  {
-  "target": "홍길동", "김철수", "이영희",
-  "evaluator": "김땡떙",
-  "session_id": 123,
-    "reasons": ["시간 약속을 잘 지켰어요", "매너가 좋아요"],
-  "score": 1
+  @override
+  void initState() {
+    super.initState();
+    AuthService.setupInterceptor();
+    fetchMates();
   }
- */
 
+  Future<void> fetchMates() async {
+    try {
+      final response = await AuthService.dio.get('/rooms/${widget.roomId}/user_list/');
+
+      if (response.statusCode == 200 && response.data['nickname'] != null) {
+        List<String> nicknames = response.data['nickname']
+            .split(',')
+            .map((s) => s.trim())
+            .toList();
+
+        setState(() {
+          mates = nicknames
+              .map((nickname) => MateEvaluationTarget(
+            nickname: nickname,
+            roomId: widget.roomId,
+          )).toList();
+          isLoading = false;
+        });
+      } else {
+        throw Exception('서버 응답 오류');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('메이트 목록 불러오기 실패: $e')),
+      );
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   Future<void> submitEvaluation() async {
     if(selectedReasons.isEmpty) {
@@ -83,20 +108,18 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
       );
       return;
     }
-    final dio = Dio();
     try {
       final evaluator = await LocalManager.getNickname();
 
-      final response = await dio.post(
+      final response = await AuthService.dio.post(
         '/evaluate/',
         data: {
           'target': currentMate.nickname,
           'evaluator': evaluator,
-          'session_id': currentMate.sessionId,
+          'room_id': currentMate.roomId,
           'reasons': selectedReasons,
           'score': isPositive ? 1 : -1,
         },
-        options: Options(contentType: 'application/json'),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (currentIndex < mates.length - 1) {
@@ -122,6 +145,19 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (mates.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('러닝 메이트')),
+        body: const Center(child: Text('평가할 메이트가 없습니다')),
+      );
+    }
+
     List<String> currentList = isPositive ? positiveReasons : negativeReasons;
 
     return Scaffold(
@@ -175,17 +211,38 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Icon(
-                Icons.account_circle,
-                size: 130,
-                color: Color(0xFFE0E0E0),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                currentMate.nickname,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              SizedBox(
+                height: 200,
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: mates.length,
+                  onPageChanged: (index) {
+                    setState(() {
+                      currentIndex = index;
+                      selectedReasons.clear();
+                      isPositive = true;
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final mate = mates[index];
+                    return Column(
+                      children: [
+                        const Icon(
+                          Icons.account_circle,
+                          size: 130,
+                          color: Color(0xFFE0E0E0),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          mate.nickname,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 15),
