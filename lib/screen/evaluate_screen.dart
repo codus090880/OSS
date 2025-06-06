@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:prunners/screen/mate_notify_screen.dart';
+import 'package:dio/dio.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/model/auth_service.dart';
 import 'package:prunners/model/local_manager.dart';
+import 'package:prunners/screen/mate_notify_screen.dart';
 
+/// 1) 모델에 닉네임과 roomId 외에 avatarUrl 추가
 class MateEvaluationTarget {
   final String nickname;
   final int roomId;
+  final String? avatarUrl; // 새로 추가
 
   MateEvaluationTarget({
     required this.nickname,
     required this.roomId,
+    this.avatarUrl,
   });
 
   Map<String, dynamic> toJson() {
@@ -24,7 +28,8 @@ class MateEvaluationTarget {
 
 class EvaluateScreen extends StatefulWidget {
   final int roomId;
-  const EvaluateScreen({super.key, required this.roomId});
+  final int sessionId;
+  const EvaluateScreen({super.key, required this.roomId, required this.sessionId,});
 
   @override
   State<EvaluateScreen> createState() => _EvaluateScreenState();
@@ -45,7 +50,6 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
     _pageController.dispose();
     super.dispose();
   }
-
 
   List<String> positiveReasons = [
     '시간 약속을 잘 지켰어요',
@@ -72,26 +76,85 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
 
   Future<void> fetchMates() async {
     try {
-      final response = await AuthService.dio.get('/rooms/${widget.roomId}/user_list/');
+      // 디버깅: 호출 직전 URL과 roomId 확인
+      debugPrint('→ fetchMates 호출: /rooms/${widget.roomId}/user_list/');
 
-      if (response.statusCode == 200 && response.data['nickname'] != null) {
-        List<String> nicknames = response.data['nickname']
-            .split(',')
-            .map((s) => s.trim())
-            .toList();
+      // 서버에서 List<dynamic> 형태로 닉네임 + avatarUrl 목록을 받음
+      final response = await AuthService.dio.get<List<dynamic>>(
+        '/rooms/${widget.roomId}/user_list/',
+      );
+
+      // 디버깅: 응답 상태코드와 전체 데이터
+      debugPrint(
+          '[/rooms/${widget.roomId}/user_list/] status: ${response.statusCode}');
+      debugPrint(
+          '[/rooms/${widget.roomId}/user_list/] raw data: ${response.data}');
+
+      final List<dynamic>? dataList = response.data;
+      if (response.statusCode == 200 && dataList != null) {
+        // 로컬에 저장된 내 닉네임 조회
+        final myNick = await LocalManager.getNickname();
+        debugPrint('내 닉네임: $myNick');
+
+        List<MateEvaluationTarget> loaded = [];
+        for (final item in dataList) {
+          if (item is Map<String, dynamic> && item['nickname'] is String) {
+            final nickname = item['nickname'] as String;
+            // 내 닉네임이면 평가 대상에서 제외
+            if (nickname == myNick) {
+              debugPrint('내 닉네임 "$nickname" 은(는) 평가 대상에서 제외합니다.');
+              continue;
+            }
+            // avatarUrl이 String 또는 null인 경우를 처리
+            final avatar = item['avatarUrl'] is String
+                ? item['avatarUrl'] as String
+                : null;
+
+            loaded.add(MateEvaluationTarget(
+              nickname: nickname,
+              roomId: widget.roomId,
+              avatarUrl: avatar,
+            ));
+          } else {
+            debugPrint('fetchMates: 요소 형식이 기대와 다릅니다: $item');
+          }
+        }
 
         setState(() {
-          mates = nicknames
-              .map((nickname) => MateEvaluationTarget(
-            nickname: nickname,
-            roomId: widget.roomId,
-          )).toList();
+          mates = loaded;
           isLoading = false;
         });
       } else {
+        debugPrint(
+            'fetchMates: 빈 데이터이거나 statusCode != 200 (dataList=$dataList)');
         throw Exception('서버 응답 오류');
       }
+    } on DioError catch (err) {
+      // 디버깅: DioError 상세
+      debugPrint(
+          '=== DioError 발생 (/rooms/${widget.roomId}/user_list/) ===');
+      debugPrint('  .type           : ${err.type}');
+      debugPrint('  .message        : ${err.message}');
+      debugPrint('  .error          : ${err.error}');
+      debugPrint('  .statusCode     : ${err.response?.statusCode}');
+      debugPrint('  .response data  : ${err.response?.data}');
+      debugPrint('  .requestOptions.uri    : ${err.requestOptions.uri}');
+      debugPrint('  .requestOptions.method : ${err.requestOptions.method}');
+      debugPrint('  .requestOptions.headers: ${err.requestOptions.headers}');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(
+            '메이트 목록 불러오기 실패: ${err.response?.statusCode}')),
+      );
+      setState(() {
+        isLoading = false;
+      });
     } catch (e) {
+      // 기타 예외
+      debugPrint(
+          '=== 예외 발생 (/rooms/${widget.roomId}/user_list/) ===');
+      debugPrint('  error: $e');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('메이트 목록 불러오기 실패: $e')),
       );
@@ -102,25 +165,35 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
   }
 
   Future<void> submitEvaluation() async {
-    if(selectedReasons.isEmpty) {
+    if (selectedReasons.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('사유를 한 가지 이상 선택해주세요')),
       );
       return;
     }
+
     try {
       final evaluator = await LocalManager.getNickname();
 
-      final response = await AuthService.dio.post(
+      // 디버깅: 요청 바디 찍기
+      final body = {
+        'target': currentMate.nickname,
+        'evaluator': evaluator,
+        'session_id': widget.sessionId,
+        'reasons': selectedReasons,
+        'score': isPositive ? 1 : -1,
+      };
+      debugPrint('→ POST /evaluate/ 요청 바디: $body');
+
+      final response = await AuthService.dio.post<Map<String, dynamic>>(
         '/evaluate/',
-        data: {
-          'target': currentMate.nickname,
-          'evaluator': evaluator,
-          'room_id': currentMate.roomId,
-          'reasons': selectedReasons,
-          'score': isPositive ? 1 : -1,
-        },
+        data: body,
+        options: Options(contentType: Headers.jsonContentType),
       );
+
+      // 디버깅: 응답 상태와 데이터 찍기
+      debugPrint('← 응답 status=${response.statusCode}, data=${response.data}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (currentIndex < mates.length - 1) {
           setState(() {
@@ -128,15 +201,48 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
             selectedReasons.clear();
             isPositive = true;
           });
+          _pageController.animateToPage(
+            currentIndex,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
         } else {
-          // 마지막 사람까지 평가 완료
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('모든 메이트 평가가 완료되었습니다')),
           );
-          Navigator.pop(context); // 또는 홈으로 이동
+          Navigator.pop(context);
         }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('평가 실패: ${response.statusCode}')),
+        );
       }
+    } on DioError catch (err) {
+      // 디버깅: DioError 상세 정보
+      debugPrint('=== DioError 발생 (/evaluate/) ===');
+      debugPrint('  .type           : ${err.type}');
+      debugPrint('  .message        : ${err.message}');
+      debugPrint('  .error          : ${err.error}');
+      debugPrint('  .statusCode     : ${err.response?.statusCode}');
+      debugPrint('  .response data  : ${err.response?.data}');
+      debugPrint('  .requestOptions.uri    : ${err.requestOptions.uri}');
+      debugPrint('  .requestOptions.method : ${err.requestOptions.method}');
+      debugPrint('  .requestOptions.data   : ${err.requestOptions.data}');
+      debugPrint('  .requestOptions.headers: ${err.requestOptions.headers}');
+
+      String userMsg = '평가 중 오류가 발생했습니다.';
+      if (err.response?.statusCode == 400) {
+        userMsg = '400: 요청 데이터 형식 오류 또는 필수값 누락';
+      } else if (err.response?.statusCode == 403) {
+        userMsg = '403: 권한이 없습니다.';
+      } else if (err.response?.statusCode == 500) {
+        userMsg = '500: 서버 내부 오류';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(userMsg)),
+      );
     } catch (e) {
+      debugPrint('=== 예외 발생 (/evaluate/) ===\n  error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('오류 발생: $e')),
       );
@@ -172,17 +278,19 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
         ),
         actions: [
           IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => MateNotifyScreen()),
-                );
-              },
-              icon: Icon(
-                Icons.notifications_none,
-                color: Colors.black,
-                size: 32,
-              )
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => MateNotifyScreen(targetNickname: currentMate.nickname,
+                      roomid: currentMate.roomId,)),
+              );
+            },
+            icon: const Icon(
+              Icons.notifications_none,
+              color: Colors.black,
+              size: 32,
+            ),
           )
         ],
       ),
@@ -192,13 +300,17 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
           currentIndex: 1,
           onTap: (index) {
             if (index == 0) return;
-            Navigator.pushReplacementNamed(context, ['/home', '/running', '/profile'][index]);
+            Navigator.pushReplacementNamed(
+              context,
+              ['/home', '/running', '/profile'][index],
+            );
           },
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+          padding:
+          const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -212,7 +324,7 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
               ),
               const SizedBox(height: 16),
               SizedBox(
-                height: 200,
+                height: 240, // 약간 높이 추가
                 child: PageView.builder(
                   controller: _pageController,
                   itemCount: mates.length,
@@ -227,12 +339,21 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
                     final mate = mates[index];
                     return Column(
                       children: [
-                        const Icon(
-                          Icons.account_circle,
-                          size: 130,
-                          color: Color(0xFFE0E0E0),
-                        ),
-                        const SizedBox(height: 10),
+                        // ─── avatarUrl이 있으면 네트워크 이미지를, 없으면 기본 아이콘 ───
+                        if (mate.avatarUrl != null &&
+                            mate.avatarUrl!.isNotEmpty)
+                          CircleAvatar(
+                            radius: 60,
+                            backgroundImage:
+                            NetworkImage(mate.avatarUrl!),
+                          )
+                        else
+                          const Icon(
+                            Icons.account_circle,
+                            size: 120,
+                            color: Color(0xFFE0E0E0),
+                          ),
+                        const SizedBox(height: 12),
                         Text(
                           mate.nickname,
                           style: const TextStyle(
@@ -280,7 +401,8 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
               ),
               const SizedBox(height: 20),
               ...currentList.map((reason) {
-                final isSelected = selectedReasons.contains(reason);
+                final isSelected =
+                selectedReasons.contains(reason);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: OutlinedButton(
@@ -298,12 +420,14 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
                         color: Colors.black,
                         width: isSelected ? 2.0 : 1.0,
                       ),
-                      minimumSize: Size.fromHeight(55),
+                      minimumSize: const Size.fromHeight(55),
                     ),
                     child: Row(
                       children: [
                         Icon(
-                          isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                          isSelected
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
                           color: Colors.black,
                           size: 20,
                         ),

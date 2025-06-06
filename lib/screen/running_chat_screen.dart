@@ -7,6 +7,8 @@ import 'package:prunners/model/local_manager.dart';
 import 'package:prunners/screen/running_screen.dart';
 import 'package:prunners/screen/matching_list_screen.dart';
 
+import '../model/auth_service.dart';
+
 class ChatRoomScreen extends StatefulWidget {
   final int roomId;
   final String initialRoomTitle;
@@ -37,8 +39,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   late Future<String> _futureNickname;
   bool _isLoading = false;
 
-  // ─── 참가자 목록을 문자열 리스트로 관리 (final 제거) ───
-  List<String> _participants = [];
+  // ─── 참가자 목록을 닉네임+avatarUrl 형태로 저장 ───
+  List<Map<String, String?>> _participants = [];
 
   @override
   void initState() {
@@ -126,14 +128,47 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
   }
 
-  /// ─── 4) 채팅방 참여자 목록 조회 ───
+  /// ─── 4) 채팅방 참여자 목록 조회 (닢임 + avatarUrl 포함) ───
   Future<void> _loadParticipants() async {
     try {
-      final nicknames = await RunningChatService().fetchParticipants(widget.roomId);
-      setState(() {
-        _participants = nicknames;
-      });
+      // GET /rooms/<room_id>/user_list/ → [{ "nickname": "...", "avatarUrl": "..." }, ...]
+      final response = await AuthService.dio.get<List<dynamic>>(
+        '/rooms/${widget.roomId}/user_list/',
+      );
+
+      // 디버깅 로그
+      debugPrint('[/rooms/${widget.roomId}/user_list/] status: ${response.statusCode}');
+      debugPrint('[/rooms/${widget.roomId}/user_list/] raw data: ${response.data}');
+
+      final List<dynamic>? dataList = response.data;
+      if (response.statusCode == 200 && dataList != null) {
+        List<Map<String, String?>> loaded = [];
+        for (final item in dataList) {
+          if (item is Map<String, dynamic>) {
+            final nick = item['nickname'] as String? ?? '';
+            final avatar = item['avatarUrl'] is String
+                ? item['avatarUrl'] as String
+                : null;
+            loaded.add({
+              'nickname': nick,
+              'avatarUrl': avatar,
+            });
+          } else {
+            debugPrint('[ChatRoomScreen] fetchParticipants: 예상치 못한 형식: $item');
+          }
+        }
+        setState(() {
+          _participants = loaded;
+        });
+      } else {
+        // 오류 응답 혹은 dataList == null
+        debugPrint('[ChatRoomScreen] fetchParticipants: 데이터가 없거나 오류 코드: ${response.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('참가자 목록을 불러오는 데 실패했습니다.')),
+        );
+      }
     } on DioError catch (err) {
+      // HTTP 오류
       if (err.response?.statusCode == 400) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('잘못된 요청입니다.')),
@@ -147,7 +182,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           const SnackBar(content: Text('참가자 목록을 불러오는 데 실패했습니다.')),
         );
       }
+      debugPrint('=== DioError fetchParticipants ===');
+      debugPrint('  .type: ${err.type}');
+      debugPrint('  .statusCode: ${err.response?.statusCode}');
+      debugPrint('  .response data: ${err.response?.data}');
     } catch (e) {
+      // 기타 예외
       print('[ChatRoomScreen] 참가자 목록 조회 중 예외: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('참가자 목록을 불러오는 데 오류가 발생했습니다.')),
@@ -224,7 +264,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
   }
 
-  /// ─── 8) 참가 요청 목록 다이얼로그 (기존과 동일) ───
+  /// ─── 8) 참가 요청 목록 다이얼로그 ───
   Future<void> _showJoinRequestsDialog() async {
     List<JoinRequest> joinRequests = [];
     try {
@@ -280,15 +320,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                 setStateDialog(() {
                                   _localRequests.removeAt(index);
                                 });
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(
                                   SnackBar(
                                     content: Text(
                                         '${req.requesterUsername} 님 참가를 수락했습니다.'),
                                   ),
                                 );
                               } catch (e) {
-                                print('[ChatRoomScreen] 참가 요청 수락 실패: $e');
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                print(
+                                    '[ChatRoomScreen] 참가 요청 수락 실패: $e');
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(
                                   const SnackBar(
                                       content: Text('참가 요청 수락에 실패했습니다.')),
                                 );
@@ -343,7 +386,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: _confirmLeave,
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
         title: GestureDetector(
           onTap: _editRoomTitle,
@@ -370,20 +415,32 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 child: _participants.isEmpty
                     ? const Center(child: Text('참가자가 없습니다.'))
                     : ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 16, horizontal: 12),
                   itemCount: _participants.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (_, index) {
-                    final nickname = _participants[index];
+                    final participant = _participants[index];
+                    final nickname = participant['nickname']!;
+                    final avatarUrl = participant['avatarUrl'];
+
                     return Row(
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          child: Text(
-                            nickname.isNotEmpty ? nickname[0] : '?',
-                            style: const TextStyle(color: Colors.white),
-                          ),
                           backgroundColor: const Color(0xFFBBBBBB),
+                          backgroundImage: avatarUrl != null
+                              ? NetworkImage(avatarUrl)
+                              : null,
+                          child: avatarUrl == null
+                              ? Text(
+                            nickname.isNotEmpty
+                                ? nickname[0]
+                                : '?',
+                            style: const TextStyle(
+                                color: Colors.white),
+                          )
+                              : null,
                         ),
                         const SizedBox(width: 12),
                         Text(
@@ -398,7 +455,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
               // ─── 참가 대기 버튼 ───
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 6),
                 child: OutlinedButton(
                   onPressed: _showJoinRequestsDialog,
                   child: const Text('참가 대기'),
@@ -414,7 +472,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
               // ─── 러닝하기 버튼 ───
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 6),
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.push(
@@ -437,7 +496,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
               // ─── 채팅방 나가기 버튼 ───
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 12),
                 child: OutlinedButton(
                   onPressed: _confirmLeave,
                   child: const Text('채팅방 나가기'),
@@ -468,18 +528,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 }
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   itemCount: _messages.length,
                   itemBuilder: (_, i) {
                     final msg = _messages[i];
                     final isMe = msg.sender == myNick;
                     return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment:
+                      isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isMe ? const Color(0xFFE1B08C) : Colors.white,
+                          color: isMe
+                              ? const Color(0xFFE1B08C)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: const [
                             BoxShadow(
@@ -494,7 +558,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           children: [
                             if (!isMe)
                               Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
+                                padding:
+                                const EdgeInsets.only(bottom: 4),
                                 child: Text(
                                   msg.sender,
                                   style: const TextStyle(
@@ -517,7 +582,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           // 입력창
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               children: [
                 Expanded(

@@ -87,7 +87,7 @@ class RunningChatService {
   /// 4) 방 나가기 (DELETE /friend-chat/<room_id>/leave/)
   Future<void> leaveRoom(int roomId) async {
     try {
-      await _dio.delete('/rooms/<room_id>/title/');
+      await _dio.delete('/rooms/$roomId/leave/');
       print('[RunningChatService] leaveRoom 성공: $roomId');
     } on DioError catch (err) {
       print('[RunningChatService] leaveRoom 실패: ${err.message}');

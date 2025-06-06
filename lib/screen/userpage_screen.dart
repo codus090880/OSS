@@ -6,7 +6,6 @@ import 'package:prunners/widget/rounded_shadow_box.dart';
 import 'package:prunners/screen/runningmate.dart';
 import 'package:prunners/screen/setting.dart';
 import 'package:prunners/screen/record_screen.dart';
-import 'package:prunners/screen/badge_screen.dart';
 import 'package:prunners/screen/level_guide_screen.dart';
 import 'package:prunners/model/local_manager.dart';
 import 'package:prunners/model/auth_service.dart';
@@ -86,26 +85,28 @@ class _UserBodyState extends State<UserBody> {
       // SharedPreferences에서 username(=nickname) 꺼내기
       final username = await LocalManager.getNickname();
 
-      // GET 요청 시 queryParameters로 username을 넘겨줍니다.
-      final resp = await AuthService.dio.get(
+      // POST 요청으로 body에 username을 담아 보냅니다.
+      final resp = await AuthService.dio.post<Map<String, dynamic>>(
         '/manner_temp/',
-        queryParameters: {'username': username},
+        data: {'username': username},
+        options: Options(
+          contentType: Headers.jsonContentType,
+        ),
       );
 
       // 서버 응답 예시: { "username": "...", "manner_temp": 36.5 }
-      final data = resp.data as Map<String, dynamic>;
-
+      final data = resp.data!;
       setState(() {
         _mannerTemp = (data['manner_temp'] as num).toDouble();
       });
     } on DioError catch (e) {
       // 에러 코드별 처리 (필요 시 UI에 토스트나 다이얼로그로 띄워도 됩니다)
       if (e.response?.statusCode == 400) {
-        print('400: username 누락');
-      } else if (e.response?.statusCode == 404) {
-        print('404: 유저 없음');
-      } else if (e.response?.statusCode == 401) {
-        print('401: 인증 실패');
+        print('400: username 누락 또는 형식 오류');
+      } else if (e.response?.statusCode == 403) {
+        print('403: 권한 없음');
+      } else if (e.response?.statusCode == 500) {
+        print('500: 서버 오류');
       } else {
         print('알 수 없는 오류: $e');
       }

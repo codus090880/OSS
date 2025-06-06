@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
-import 'package:dio/dio.dart';
 import 'package:prunners/model/auth_service.dart';
 import 'package:prunners/model/location_util.dart';
 

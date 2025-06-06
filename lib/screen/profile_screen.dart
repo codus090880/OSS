@@ -295,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ..add(MapEntry('age', parsedAge.toString()))
                 ..add(MapEntry('height', parsedHeight.toString()))
                 ..add(MapEntry('weight', parsedWeight.toString()))
-                ..add(MapEntry('level', selectedLevel!));
+                ..add(MapEntry('grade_level', selectedLevel!));
 
               if (_profileImage != null) {
                 form.files.add(

@@ -208,8 +208,8 @@ class RunningController {
     // Android: 5초마다 업데이트, 거리 필터는 0m
     final androidSettings = AndroidSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 0, // 거리 변화에 상관없이
-      intervalDuration: const Duration(seconds: 5), // 5초마다 위치 요청
+      distanceFilter: 50, // 거리 변화에 상관없이
+      //intervalDuration: const Duration(seconds: 5), // 5초마다 위치 요청
     );
 
     // iOS: distanceFilter만 지정 (intervalDuration은 지원 안 됨)
@@ -301,7 +301,7 @@ class RunningController {
     stopwatch.stop();
   }
 
-  Future<RunSummary> finishRun() async {
+  Future<RunSummary> finishRun(BuildContext context) async {
     stop();
 
     final avgSpeed = _speedHistory.isNotEmpty
@@ -310,7 +310,15 @@ class RunningController {
     final avgCadence = _cadenceHistory.isNotEmpty
         ? _cadenceHistory.reduce((a, b) => a + b) / _cadenceHistory.length
         : 0.0;
-    debugPrint('▶▶ finishRun(): route 길이 = ${route.length}');
+
+    final message = '▶▶ finishRun(): route 길이 = ${route.length}';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
     return RunSummary(
       distanceKm: totalDistance / 1000,
       elapsedTime: elapsedTime,
