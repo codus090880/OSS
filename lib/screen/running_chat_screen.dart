@@ -419,7 +419,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => RunningScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => RunningScreen(roomId: widget.roomId),
+                      ),
                     );
                   },
                   child: const Text('러닝하기'),
@@ -522,7 +524,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   child: ChatBox(
                     controller: _textController,
                     onSend: _handleSend,
-                    onAdd: _onAddPressed,
+                    //onAdd: _onAddPressed,
                   ),
                 ),
               ],
