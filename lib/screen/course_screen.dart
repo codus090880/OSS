@@ -74,7 +74,7 @@ class CourseScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ReadReviewScreen(courseId: course.course_id),
+                        builder: (context) => ReadReviewScreen(courseId: course.course_id, coursetitle: course.title),
                       ),
                     );
                   },

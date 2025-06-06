@@ -31,20 +31,20 @@ class RunSummary {
     List<LatLng> parsedRoute = [];
     if (json['route'] is List) {
       parsedRoute = (json['route'] as List<dynamic>).map((pt) {
-        final lat = (pt['lat'] as num).toDouble();
-        final lng = (pt['lng'] as num).toDouble();
+        final lat = (pt['lat'] ?? 0).toDouble();
+        final lng = (pt['lng'] ?? 0).toDouble();
         return LatLng(lat, lng);
       }).toList();
     }
 
     return RunSummary(
-      distanceKm: (json['distance_km'] as num).toDouble(),
-      elapsedTime: json['elapsed_time'].toString(),
-      calories: (json['calories'] as num).toDouble(),
-      averageSpeedKmh: (json['avg_speed_kmh'] as num).toDouble(),
-      cadenceSpm: (json['cadence_spm'] as num).toDouble(),
+      distanceKm: (json['distance_km'] ?? 0).toDouble(),
+      elapsedTime: json['elapsed_time']?.toString() ?? '00:00:00',
+      calories: (json['calories'] ?? 0).toDouble(),
+      averageSpeedKmh: (json['avg_speed_kmh'] ?? 0).toDouble(),
+      cadenceSpm: (json['cadence_spm'] ?? 0).toDouble(),
       route: parsedRoute,
-      dateTime: DateTime.parse(json['date_time'].toString()),
+      dateTime: DateTime.tryParse(json['date_time']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 

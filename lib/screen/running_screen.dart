@@ -94,67 +94,59 @@ class _RunningScreenState extends State<RunningScreen> {
   }
 
   Future<void> _finishAndUpload() async {
-    // 1) 러닝을 마치고 RunSummary 얻기
-    final summary = await _controller.finishRun(context);
+    final summary = await _controller.finishRun();
 
+    // 토큰 읽기
+    final token = await AuthService.storage.read(key: 'ACCESS_TOKEN');
+
+    // 서버에 POST
     final resp = await AuthService.dio.post(
-      '/runhistory/',
+      '/upload_course/',
       data: summary.toJson(),
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
     );
 
-    // 3) roomId가 있으면 /end_running/ 호출 → session_id 얻기 → EvaluateScreen으로 이동
-    if (widget.roomId != null) {
-      int? sessionId;
-      try {
-        final endResp = await AuthService.dio.post<Map<String, dynamic>>(
-          '/end_running/',
-          data: {'room_id': widget.roomId},
-        );
-        debugPrint('→ /end_running/ 응답: status=${endResp.statusCode}, data=${endResp.data}');
+    if (resp.statusCode  == 200 || resp.statusCode == 201) {
+      throw Exception('업로드 성공하였습니다.');
+    }
 
-        if (endResp.statusCode == 200 && endResp.data != null) {
-          sessionId = endResp.data!['session_id'] as int;
-        } else {
-          throw Exception('session_id를 받아오지 못했습니다 (status ${endResp.statusCode})');
-        }
-      } on DioError catch (err) {
-        debugPrint('=== DioError 발생 (/end_running/) ===');
-        debugPrint('  .statusCode: ${err.response?.statusCode}');
-        debugPrint('  .response data: ${err.response?.data}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '채팅방 종료 처리 실패: 상태 코드 ${err.response?.statusCode} - ${err.message}',
-            ),
+    // 방 ID 있으면 추가 처리
+    if (widget.roomId != null) {
+      try {
+        final token = await AuthService.storage.read(key: 'ACCESS_TOKEN');
+
+        await AuthService.dio.post(
+          '/runchat/room/${widget.roomId}/run_finish/',
+          options: Options(
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
           ),
         );
       } catch (e) {
-        debugPrint('=== 예외 발생 (/end_running/) ===\n  error: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('채팅방 종료 처리 중 알 수 없는 에러: $e')),
+          SnackBar(content: Text('채팅방 종료 처리 실패: $e')),
         );
       }
 
-      // 4) sessionId가 정상적으로 받아와졌다면 EvaluateScreen으로 이동
-      if (sessionId != null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => EvaluateScreen(
-              roomId: widget.roomId!,
-              sessionId: sessionId!, // 여기서 넘겨줍니다
-            ),
-          ),
-        );
-        return;
-      }
-      // sessionId가 null이면 PostRunScreen으로 이동하거나, 남겨진 로직을 그대로 실행할 수도 있습니다.
+      // 검사 화면 이동
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => EvaluateScreen(roomId: widget.roomId!)),
+      );
+    } else {
+      // 결과 화면 이동
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => PostRunScreen(summary: summary)),
+      );
     }
-
-    // 5) roomId가 없거나 sessionId 얻기에 실패했으면, 기존 PostRunScreen으로 이동
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => PostRunScreen(summary: summary)),
-    );
   }
+
   @override
   Widget build(BuildContext context) {
     if (_controller.initialPosition == null) {

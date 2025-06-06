@@ -221,7 +221,13 @@ class _RunningMateState extends State<RunningMate> {
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(60),
         child: AppBar(
-          title: Text('러닝 메이트'),
+          title: Text('러닝 메이트',
+            style: TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          centerTitle: true,
           actions: [
             IconButton(
               icon: Icon(Icons.person_add),
