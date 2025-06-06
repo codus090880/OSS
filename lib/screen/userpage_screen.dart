@@ -5,7 +5,6 @@ import 'package:prunners/widget/rounded_shadow_box.dart';
 import 'package:prunners/screen/runningmate.dart';
 import 'package:prunners/screen/setting.dart';
 import 'package:prunners/screen/record_screen.dart';
-import 'package:prunners/screen/badge_screen.dart';
 import 'package:prunners/screen/level_guide_screen.dart';
 import 'package:prunners/model/local_manager.dart';
 import 'package:prunners/model/auth_service.dart';
@@ -94,7 +93,6 @@ class _UserBodyState extends State<UserBody> {
 
   final List<_MenuItem> _menuItems = const [
     _MenuItem(icon: Icons.book,             label: '나의 기록'),
-    _MenuItem(icon: Icons.workspace_premium,label: '나의 뱃지'),
     _MenuItem(icon: Icons.group,            label: '러닝 메이트'),
     _MenuItem(icon: Icons.settings,         label: '설정'),
   ];
@@ -266,12 +264,6 @@ class _UserBodyState extends State<UserBody> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => RecordScreen()),
-                            );
-                          }
-                          if (item.label == '나의 뱃지') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => BadgeScreen()),
                             );
                           }
                         },

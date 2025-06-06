@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:prunners/screen/agree_screen.dart';
-import 'package:prunners/screen/chat_detail_screen.dart';
-import 'package:prunners/screen/course_notify_screen.dart';
 import 'package:prunners/screen/course_recommended_screen.dart';
-import 'package:prunners/screen/course_screen.dart';
 import 'package:prunners/screen/delete_account_screen.dart';
-import 'package:prunners/screen/evaluate_screen.dart';
 import 'package:prunners/screen/home_screen.dart';
 import 'package:prunners/screen/level_guide_screen.dart';
 import 'package:prunners/screen/login_screen.dart';
@@ -14,21 +10,17 @@ import 'package:prunners/screen/match_failed_screen.dart';
 import 'package:prunners/screen/matching_list_screen.dart';
 import 'package:prunners/screen/mate_notify_screen.dart';
 import 'package:prunners/screen/profile_screen.dart';
-import 'package:prunners/screen/read_review_screen.dart';
 import 'package:prunners/screen/reset_password_screen.dart';
 import 'package:prunners/screen/matching_term_screen.dart';
 import 'package:prunners/screen/runningtype_select_screen.dart';
 import 'package:prunners/screen/signup_screen.dart';
 import 'package:prunners/screen/term_of_use_screen.dart';
 import 'package:prunners/screen/userpage_screen.dart';
-import 'package:prunners/screen/write_review_screen.dart';
 import 'package:prunners/screen/setting.dart';
 import 'package:prunners/screen/matching_screen.dart';
 import 'package:prunners/screen/record_screen.dart';
 import 'package:prunners/screen/after_matching.dart';
 import 'package:prunners/screen/running_screen.dart';
-import 'package:prunners/screen/chat_screen.dart';
-import 'package:prunners/screen/badge_screen.dart';
 import 'package:prunners/screen/add_runningmate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:prunners/model/push.dart';
@@ -110,14 +102,12 @@ class MyApp extends StatelessWidget {
         '/signup': (_) => SignupScreen(),
         '/agree': (_) => AgreeScreen(),
         '/profile': (_) => UserPageScreen(),
-        '/evaluate': (_) => EvaluateScreen(),
         '/running': (_) => RunningtypeSelectScreen(),
         '/setting': (_) => Setting(),
         '/matching': (_) => MatchingScreen(),
         '/record': (_) => RecordScreen(),
         '/after_matching' : (_) => AfterMatching(),
         '/user_set' : (_) => ProfileScreen(),
-        '/badge': (_) => BadgeScreen(),
         '/course': (_) => CourseRecommendedScreen(),
         '/addrunningmate': (_) => AddRunningmate(),
         '/runningscreen' : (_) => RunningScreen(),
