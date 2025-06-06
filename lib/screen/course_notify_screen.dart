@@ -4,6 +4,7 @@ import 'package:prunners/model/auth_service.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
 import 'package:prunners/widget/bottom_bar.dart';
+import 'dart:convert'; // jsonEncode 쓸 때 필요!
 
 class CourseNotifyScreen extends StatefulWidget {
   final int reviewId;
@@ -25,14 +26,20 @@ class _CourseNotifyScreenState extends State<CourseNotifyScreen> {
       return;
     }
     final dio = AuthService.dio;
+    final token = await AuthService.storage.read(key: 'ACCESS_TOKEN');
     try {
       final response = await dio.post(
         '/course_notify/',
-        data: {
+        data: jsonEncode({
           'review_id': widget.reviewId,
           'content': notifyText,
-        },
-        options: Options(headers: {'Content-Type': 'application/json'}),
+        }),
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -9,19 +9,20 @@
         <string>kakaolink</string>
         <string>kakaotalk</string>
     </array>
-    <key>NSMotionUsageDescription</key>
-    <string>러닝 기록을 위해 동작 및 피트니스 데이터를 사용합니다.</string>
 <key>NSPhotoLibraryUsageDescription</key>
-	<string>This app required NSPhotoLibraryUsageDescription permission</string>
-	<key>NSCameraUsageDescription</key>
-	<string>This app required NSCameraUsageDescription permission</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>This app required NSMicrophoneUsageDescription permission</string>
+<string>앱에서 사진 첨부 기능을 위해 사진 접근 권한이 필요합니다.</string>
+
+<key>NSCameraUsageDescription</key>
+<string>앱에서 카메라 기능을 위해 카메라 접근 권한이 필요합니다.</string>
+
+<key>NSMicrophoneUsageDescription</key>
+<string>This app required NSMicrophoneUsageDescription permission</string>
+
 <key>UIBackgroundModes</key>
-  <array>
+<array>
     <string>fetch</string>
     <string>location</string>
-  </array>
+</array>
 <key>NSLocationWhenInUseUsageDescription</key>
 		<string>사용자의 현재 위치는 사용자 근처의 정보를 가져오는데 반드시 필요합니다!</string>
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

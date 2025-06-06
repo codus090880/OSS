@@ -113,7 +113,6 @@ class MyApp extends StatelessWidget {
         '/runningscreen' : (_) => RunningScreen(),
         '/levelguide': (_) => LevelGuideScreen(),
         '/reset': (_) => ResetPasswordScreen(),
-        '/mate_notify': (_) => MateNotifyScreen(),
         '/delete_account': (_) => DeleteAccountScreen(),
         '/matching_list': (_) => MatchingListScreen(),
         '/matching_term': (_) => MatchingTermScreen(),

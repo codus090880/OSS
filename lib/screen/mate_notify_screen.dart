@@ -6,7 +6,10 @@ import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/model/local_manager.dart';
 
 class MateNotifyScreen extends StatefulWidget {
-  const MateNotifyScreen({super.key});
+  final String targetNickname;
+  final int roomId;
+
+  const MateNotifyScreen({super.key, required this.targetNickname, required this.roomId});
 
   @override
   State<MateNotifyScreen> createState() => _MateNotifyScreenState();
@@ -14,11 +17,6 @@ class MateNotifyScreen extends StatefulWidget {
 
 class _MateNotifyScreenState extends State<MateNotifyScreen> {
   final TextEditingController notifyController = TextEditingController();
-
-  // mockData
-  final String targetName = '홍길동';
-  final sessionId = 123;
-
   Future<void> submitNotify() async {
     final String notifyText = notifyController.text.trim();
     if(notifyText.isEmpty) {
@@ -34,8 +32,8 @@ class _MateNotifyScreenState extends State<MateNotifyScreen> {
         '/mate_notify/',
         data: {
           'reporter': reporter,
-          'target': targetName,
-          'session_id': sessionId,
+          'target': widget.targetNickname,
+          'room_id': widget.roomId,
           'content': notifyText,
         },
         options: Options(headers: {'Content-Type': 'application/json'}),

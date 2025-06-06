@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
@@ -93,49 +94,59 @@ class _RunningScreenState extends State<RunningScreen> {
   }
 
   Future<void> _finishAndUpload() async {
-    // 1) 러닝을 마치고 RunSummary 얻기
     final summary = await _controller.finishRun();
 
-    try {
-      // 2) 서버에 POST (/runhistory/)
-      final resp = await AuthService.dio.post(
-        '/runhistory/',
-        data: summary.toJson(),
-      );
-      if (resp.statusCode != 200) {
-        throw Exception('서버 오류: ${resp.statusCode}');
-      }
-    } catch (e) {
-      // 업로드 실패 시 에러 메시지만 띄우고 진행
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('업로드 실패: $e')),
-      );
-      // 원한다면 여기서 return; 으로 이동을 막을 수도 있습니다.
+    // 토큰 읽기
+    final token = await AuthService.storage.read(key: 'ACCESS_TOKEN');
+
+    // 서버에 POST
+    final resp = await AuthService.dio.post(
+      '/upload_course/',
+      data: summary.toJson(),
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+
+    if (resp.statusCode  == 200 || resp.statusCode == 201) {
+      throw Exception('업로드 성공하였습니다.');
     }
 
-    // 3) roomId가 있으면, 방 ID를 서버에 추가로 전송
+    // 방 ID 있으면 추가 처리
     if (widget.roomId != null) {
       try {
+        final token = await AuthService.storage.read(key: 'ACCESS_TOKEN');
+
         await AuthService.dio.post(
           '/runchat/room/${widget.roomId}/run_finish/',
+          options: Options(
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          ),
         );
       } catch (e) {
-        // 실패해도 에러 토스트만 띄우고 진행
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('채팅방 종료 처리 실패: $e')),
         );
       }
-      // 4) 방이 있으면 검사 화면(EvaluateScreen)으로 이동
+
+      // 검사 화면 이동
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => EvaluateScreen(roomId: widget.roomId!)),
       );
     } else {
-      // roomId가 없으면 기존처럼 PostRunScreen으로 이동
+      // 결과 화면 이동
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => PostRunScreen(summary: summary)),
       );
     }
   }
+
   @override
   Widget build(BuildContext context) {
     if (_controller.initialPosition == null) {

@@ -175,7 +175,11 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => MateNotifyScreen()),
+                  MaterialPageRoute(builder: (context) => MateNotifyScreen(
+                    targetNickname: currentMate.nickname,
+                    roomId: currentMate.roomId,
+                  )
+                  ),
                 );
               },
               icon: Icon(

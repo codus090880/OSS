@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:prunners/screen/course_notify_screen.dart';
+import 'package:prunners/screen/write_review_screen.dart';
 import 'package:prunners/widget/top_bar.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:intl/intl.dart';
+
+import '../model/auth_service.dart';
+import '../widget/outlined_button_box.dart';
 
 class Review {
   final int reviewId;
@@ -25,7 +28,8 @@ class Review {
 
 class ReadReviewScreen extends StatefulWidget {
   final int courseId;
-  const ReadReviewScreen({super.key, required this.courseId});
+  final String coursetitle;
+  const ReadReviewScreen({super.key, required this.courseId, required this.coursetitle});
 
   @override
   State<ReadReviewScreen> createState() => _ReadReviewScreenState();
@@ -39,24 +43,23 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
   @override
   void initState() {
     super.initState();
-    // reviews = getMockData();
     fetchReviews();
   }
 
   Future<void> fetchReviews() async {
-    final dio = Dio();
+    final dio = AuthService.dio;
     setState(() {
       isLoading = true;
     });
     try {
-      final response = await dio.get('/course/{widget.courseId}/reviews/');
+      final response = await dio.get('/course/${widget.courseId}/reviews/');
       if(response.statusCode == 200) {
         final List<dynamic> jsonData = response.data;
         setState(() {
           reviews = jsonData.map((e) => Review(
-            reviewId: e['review_id'],
+            reviewId: (e['review_id'] as int?) ?? 0,
             nickname: e['nickname'] ?? '알 수 없음',
-            rating: e['rating'] ?? 0,
+            rating: (e['rating'] as int?) ?? 0,
             comment: e['comment'] ?? '',
             imgs: List<String>.from(e['images'] ?? []),
             date: DateTime.parse(e['date']),
@@ -74,27 +77,6 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
       });
     }
   }
-
-  /*
-  List<Review> getMockData() {
-    return [
-      Review(
-        nickname: '홍길동',
-        rating: 5,
-        comment: '사람도 별로 없고 경치가 이쁘네요 추천합니다',
-        imgs: ['img1.png', 'img2.png', 'img3.png'],
-        date: DateTime(2025, 5, 7),
-      ),
-      Review(
-        nickname: '김철수',
-        rating: 1,
-        comment: '별로네요',
-        imgs: [],
-        date: DateTime(2025, 5, 8),
-      ),
-    ];
-  }
-   */
 
   void sortReviews(String type) {
     setState(() {
@@ -138,6 +120,27 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
                     )
                   ],
                 ),
+              ),
+              Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 5, 20, 10),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButtonBox(
+                      text: '리뷰 작성하기',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => WriteReviewScreen(
+                              courseId: widget.courseId,
+                              courseTitle: widget.coursetitle,
+                            ),
+                          ),
+                        );
+                      },
+                      fontSize: 15,
+                    ),
+                  )
               ),
               Expanded(
                 child: isLoading
@@ -184,23 +187,6 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
                                     ],
                                   ),
                                 ],
-                              ),
-                            ),
-                            const Spacer(),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => CourseNotifyScreen(reviewId: review.reviewId)),
-                                );
-                              },
-                              child: const Text(
-                                '신고하기',
-                                style: TextStyle(
-                                  color: Color(0xFF424242),
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: Color(0xFF424242),
-                                ),
                               ),
                             ),
                           ],

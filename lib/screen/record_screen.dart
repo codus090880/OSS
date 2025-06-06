@@ -24,6 +24,7 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   void initState() {
     super.initState();
+    AuthService.setupInterceptor();
     _fetchRecords();
     _fetchReport();
   }
@@ -31,19 +32,43 @@ class _RecordScreenState extends State<RecordScreen> {
   Future<void> _fetchRecords() async {
     try {
       final dio = AuthService.dio;
-      final response = await dio.get('/runhistory/');
+      final response = await dio.get('/record/');
+
+      // ✅ 1️⃣ 서버 응답 전체 출력
+      print('[DEBUG] /record/ response: ${response.data}');
+
       final data = response.data as List<dynamic>;
 
       final grouped = <DateTime, List<RunSummary>>{};
+
       for (var item in data) {
+        // ✅ 2️⃣ 각 item 확인
+        print('[DEBUG] item: $item');
+
         final summary = RunSummary.fromJson(item as Map<String, dynamic>);
+
+        // ✅ 3️⃣ 변환된 summary 확인
+        print('[DEBUG] RunSummary: '
+            'date=${summary.dateTime}, '
+            'distance=${summary.distanceKm}, '
+            'elapsedTime=${summary.elapsedTime}, '
+            'avgSpeed=${summary.averageSpeedKmh}, '
+            'calories=${summary.calories}');
+
         final key = DateTime(
           summary.dateTime.year,
           summary.dateTime.month,
           summary.dateTime.day,
         );
+
         grouped.putIfAbsent(key, () => []).add(summary);
       }
+
+      // ✅ 4️⃣ grouped Map 확인
+      print('[DEBUG] grouped records:');
+      grouped.forEach((key, list) {
+        print('  $key → ${list.length} record(s)');
+      });
 
       setState(() {
         _recordsByDate = grouped;
@@ -54,6 +79,7 @@ class _RecordScreenState extends State<RecordScreen> {
       setState(() => _loadingRecords = false);
     }
   }
+
 
   Future<void> _fetchReport() async {
     try {
@@ -89,52 +115,16 @@ class _RecordScreenState extends State<RecordScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.rate_review),
-                title: Text('리뷰 쓰기'),
-                onTap: () async {
-                  Navigator.pop(context); // 닫기
-
-                  // 서버에서 가장 유사한 러닝 코스 판별 후, courseid와 title 받아오기
-                  final dio = AuthService.dio;
-                  try {
-                    final response = await dio.post('/match-course', data: {
-                      'route': summary.route.map((latlng) => {
-                        'lat': latlng.latitude,
-                        'lng': latlng.longitude,
-                      }).toList(),
-                    });
-
-                    final matchedCourseId = response.data['matched_course_id'];
-                    final matchedCourseTitle = response.data['matched_course_title'];
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => WriteReviewScreen(
-                          courseId: matchedCourseId,
-                          courseTitle: matchedCourseTitle,
-                        ),
-                      ),
-                    );
-                  } catch (e) {
-                    print('[ERROR] Matching course: $e');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('코스 매칭 중 오류가 발생했습니다.')),
-                    );
-                  }
-                },
-              ),
-              ListTile(
                 leading: Icon(Icons.info_outline),
                 title: Text('정보 보기'),
                 onTap: () {
                   Navigator.pop(context);
-                  /*Navigator.push(
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => AfterRunningScreen(summary: summary),
+                      builder: (_) => PostRunScreen(summary: summary),
                     ),
-                  );*/
+                  );
                 },
               ),
             ],
@@ -143,6 +133,7 @@ class _RecordScreenState extends State<RecordScreen> {
       },
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

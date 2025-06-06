@@ -69,7 +69,7 @@ class _RunningtypeSelectScreenState extends State<RunningtypeSelectScreen> {
                                 ),
                                 SizedBox(height: 5),
                                 Text(
-                                  '나만의 페이스로 자유롭게',
+                                  '나만의 페이스로 \n자유롭게',
                                   style: TextStyle(fontSize: 12),
                                 ),
                               ],
@@ -88,7 +88,7 @@ class _RunningtypeSelectScreenState extends State<RunningtypeSelectScreen> {
                           borderRadius: BorderRadius.circular(16),
                           child: Container(
                             height: 350,
-                            padding: const EdgeInsets.fromLTRB(20, 35, 16, 20),
+                            padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
                               border: Border.all(
                                 color: isTogether ? Colors.deepPurple : Colors.transparent,
@@ -98,18 +98,9 @@ class _RunningtypeSelectScreenState extends State<RunningtypeSelectScreen> {
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.directions_run, size: 66, color: Color(0xFFB39DDB)),
-                                    Transform.translate(
-                                      offset: const Offset(-10, 0),
-                                      child: Icon(Icons.directions_run, size: 66, color: Color(0xFFB39DDB)),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 32),
+                              children: const [
+                                Icon(Icons.directions_run, size: 100, color: Color(0xFFB39DDB)),
+                                SizedBox(height: 10),
                                 Text(
                                   '같이 뛸래요',
                                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
