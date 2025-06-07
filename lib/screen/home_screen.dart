@@ -7,6 +7,7 @@ import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/rounded_shadow_box.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:prunners/screen/profile_screen.dart';
+import 'package:prunners/model/marathon_db_helper.dart';
 
 class MarathonEvent {
   final String name;
@@ -85,17 +86,14 @@ class _HomeBodyState extends State<HomeBody> {
 
   Future<void> _fetchEvents() async {
     try {
-      final resp = await _dio.get('https://your.api.server/marathons');
-      final data = resp.data as List<dynamic>;
+      final events = await MarathonDatabase.getEvents();
       setState(() {
-        _events = data
-            .map((e) => MarathonEvent.fromJson(e as Map<String, dynamic>))
-            .toList();
+        _events = events;
         _loading = false;
       });
     } catch (e) {
       setState(() => _loading = false);
-      debugPrint('마라톤 이벤트 로드 실패: $e');
+      debugPrint('로컬 DB에서 마라톤 이벤트 로드 실패: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('대회 정보를 불러오는 데 실패했습니다.')),
       );
@@ -193,7 +191,7 @@ class _HomeBodyState extends State<HomeBody> {
   Widget _buildListItem(MarathonEvent e) {
     final dateStr = DateFormat('yyyy.MM.dd').format(e.date);
     return RoundedShadowBox(
-      height: 80,
+      height: 96,
       width: double.infinity,
       padding: EdgeInsets.zero,
       child: Padding(

@@ -80,7 +80,6 @@ class _RecordScreenState extends State<RecordScreen> {
     }
   }
 
-
   Future<void> _fetchReport() async {
     try {
       final dio = AuthService.dio;

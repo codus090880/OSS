@@ -208,8 +208,8 @@ class RunningController {
     // Android: 5초마다 업데이트, 거리 필터는 0m
     final androidSettings = AndroidSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 50, // 거리 변화에 상관없이
-      //intervalDuration: const Duration(seconds: 5), // 5초마다 위치 요청
+      distanceFilter: 0, // 거리 변화에 상관없이
+      intervalDuration: const Duration(seconds: 5), // 5초마다 위치 요청
     );
 
     // iOS: distanceFilter만 지정 (intervalDuration은 지원 안 됨)

@@ -94,58 +94,93 @@ class _RunningScreenState extends State<RunningScreen> {
   }
 
   Future<void> _finishAndUpload() async {
-    final summary = await _controller.finishRun();
+    debugPrint('🟢 step1: RunSummary 생성 시작');
+    final summary = await _controller.finishRun(context);
+    debugPrint('🟢 step2: RunSummary 생성 완료');
 
-    // 토큰 읽기
     final token = await AuthService.storage.read(key: 'ACCESS_TOKEN');
+    debugPrint('🟢 step3: ACCESS_TOKEN 로드 완료');
 
-    // 서버에 POST
-    final resp = await AuthService.dio.post(
-      '/upload_course/',
-      data: summary.toJson(),
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ),
-    );
-
-    if (resp.statusCode  == 200 || resp.statusCode == 201) {
-      throw Exception('업로드 성공하였습니다.');
+    // 4) 서버에 POST (예외 허용)
+    try {
+      debugPrint('🟢 step4: /upload_course 요청 시작');
+      final resp = await AuthService.dio.post(
+        '/upload_course/',
+        data: summary.toJson(),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      debugPrint('🟢 step5: /upload_course 응답 status = ${resp.statusCode}');
+    } catch (e) {
+      debugPrint('❌ /upload_course 업로드 실패: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('업로드는 실패했지만 기록은 저장되었습니다.')),
+      );
     }
 
-    // 방 ID 있으면 추가 처리
+    // 5) roomId 있으면 → /end_running 시도
     if (widget.roomId != null) {
-      try {
-        final token = await AuthService.storage.read(key: 'ACCESS_TOKEN');
+      debugPrint('🟢 step6: roomId 감지됨 → /end_running 요청 시작');
+      int? sessionId;
 
-        await AuthService.dio.post(
-          '/runchat/room/${widget.roomId}/run_finish/',
-          options: Options(
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
+      try {
+        final endResp = await AuthService.dio.post<Map<String, dynamic>>(
+          '/end_running/',
+          data: {'room_id': widget.roomId},
+        );
+        debugPrint('🟢 step7: /end_running 응답 status = ${endResp.statusCode}');
+
+        if (endResp.statusCode == 200 && endResp.data != null) {
+          sessionId = endResp.data!['session_id'] as int;
+          debugPrint('🟢 step8: session_id = $sessionId');
+        } else {
+          throw Exception('session_id를 받아오지 못했습니다 (status ${endResp.statusCode})');
+        }
+      } on DioError catch (err) {
+        debugPrint('❌ stepX: DioError (/end_running) status: ${err.response?.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '채팅방 종료 처리 실패: 상태 코드 ${err.response?.statusCode} - ${err.message}',
+            ),
           ),
         );
       } catch (e) {
+        debugPrint('❌ stepX: 예외 발생 (/end_running): $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('채팅방 종료 처리 실패: $e')),
+          SnackBar(content: Text('채팅방 종료 처리 중 알 수 없는 에러: $e')),
         );
       }
 
-      // 검사 화면 이동
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => EvaluateScreen(roomId: widget.roomId!)),
-      );
+      if (sessionId != null) {
+        debugPrint('🟢 step9: EvaluateScreen으로 이동');
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => EvaluateScreen(
+              roomId: widget.roomId!,
+              sessionId: sessionId!,
+            ),
+          ),
+        );
+        return;
+      }
+
+      debugPrint('⚠️ step10: sessionId가 null임 → PostRunScreen으로 이동 예정');
     } else {
-      // 결과 화면 이동
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => PostRunScreen(summary: summary)),
-      );
+      debugPrint('🟡 step11: roomId 없음 → PostRunScreen으로 이동 예정');
     }
+
+    // 6) fallback: PostRunScreen으로 이동
+    debugPrint('🟢 step12: PostRunScreen으로 pushReplacement');
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => PostRunScreen(summary: summary)),
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {
