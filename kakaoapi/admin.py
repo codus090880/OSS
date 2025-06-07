@@ -14,7 +14,7 @@ class MatchRequestAdmin(admin.ModelAdmin):
 
 @admin.register(MatchPreference)
 class MatchPreferenceAdmin(admin.ModelAdmin):
-    list_display = ('user', 'preferred_gender', 'preferred_distance', 'preferred_time', 'allow_push')
+    list_display = ('user', 'preferred_gender', 'preferred_distance_range', 'preferred_time', 'allow_push')
 
 @admin.register(UserLocation)
 class UserLocationAdmin(admin.ModelAdmin):

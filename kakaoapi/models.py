@@ -32,6 +32,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     ]
 
     email = models.EmailField(unique=True)
+    age = models.PositiveIntegerField(null=True, blank=True)
+    height = models.FloatField(null=True, blank=True)  # cm
+    weight = models.FloatField(null=True, blank=True)  # kg
     username = models.CharField(max_length=50)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
     grade_level = models.CharField(max_length=20, choices=GRADE_CHOICES)
@@ -39,7 +42,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     temperature = models.DecimalField(max_digits=4, decimal_places=2, default=36.5)
     profile_image = models.ImageField(upload_to='profiles/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
@@ -50,6 +52,38 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+#친구 추가가
+class FriendRequest(models.Model):
+    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='friend_requests_sent')
+    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='friend_requests_received')
+    is_accepted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('from_user', 'to_user')
+
+# Friend Chat Room
+class FriendChatRoom(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"FriendChatRoom #{self.id}"
+
+
+class FriendChatParticipant(models.Model):
+    chat_room = models.ForeignKey(FriendChatRoom, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('chat_room', 'user')
+
+
+class FriendChatMessage(models.Model):
+    room = models.ForeignKey(FriendChatRoom, on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField(blank=True)
+    image = models.ImageField(upload_to='chat_images/', null=True, blank=True)
+    sent_at = models.DateTimeField(auto_now_add=True)
 
 
 # 사용자 위치 정보 (거리 기반 매칭용)
@@ -81,10 +115,12 @@ class MatchRequest(models.Model):
 class ChatRoom(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_chatrooms')
     is_locked = models.BooleanField(default=False)  # 잠금 시 입장 제한
+    title = models.CharField(max_length=100, default='러닝 채팅방')  # 👈 여기에 기본값 있음
     created_at = models.DateTimeField(auto_now_add=True)
     scheduled_time = models.DateTimeField(null=True, blank=True)  # 예정 러닝 시간
     expected_distance_km = models.FloatField(null=True, blank=True)
-
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
 
     def __str__(self):
         return f"ChatRoom #{self.id}"
@@ -93,7 +129,7 @@ class ChatRoom(models.Model):
 # 채팅방 참가자
 class ChatRoomParticipant(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE,related_name='participants')
     joined_at = models.DateTimeField(auto_now_add=True)
     is_approved = models.BooleanField(default=False)  # 초대 요청 수락 여부
 
@@ -140,13 +176,33 @@ class Report(models.Model):
 # 매칭 선호 정보 저장장
 class MatchPreference(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    preferred_distance = models.FloatField(default=5.0)  # km
     preferred_gender = models.CharField(max_length=10, choices=User.GENDER_CHOICES, default='any')
+    preferred_distance_range = models.CharField(
+        max_length=10,
+        choices=[
+            ("3-5", "3~5km"),
+            ("5-7", "5~7km"),
+            ("7-10", "7~10km"),
+            ("10+", "10km 이상")
+        ],
+        default="5-7"
+    )
     preferred_time = models.TimeField(null=True, blank=True)  # 희망 러닝 시간
     allow_push = models.BooleanField(default=True)  # 푸시 알림 허용 여부
 
     def __str__(self):
         return f"{self.user.username}의 매칭 선호"
+
+# 매칭 중인 상태 나타냄
+class MatchQueue(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    preferred_gender = models.CharField(max_length=10, choices=User.GENDER_CHOICES, default='any')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} 매칭 대기 중"
 
 # 러닝 기록 및 후 평가
 class RunningSession(models.Model):
@@ -236,3 +292,14 @@ class RunHistory(models.Model):
         super().save(*args, **kwargs)
         if self.course:
             self.course.update_popularity()  # 코스 인기도 업데이트
+        
+
+class MateReport(models.Model):
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mate_reports_made')
+    target = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mate_reports_received')
+    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.reporter.username} → {self.target.username} 신고"
