@@ -57,3 +57,4 @@ def generate_static_map_url(polyline_points, api_key):
     # center와 zoom을 생략하면 자동으로 경로 전체를 포함한 뷰 생성
     url = f"{base_url}?size={size}&path={path}&key={api_key}"
     return url
+
