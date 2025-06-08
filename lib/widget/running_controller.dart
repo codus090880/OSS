@@ -311,14 +311,6 @@ class RunningController {
         ? _cadenceHistory.reduce((a, b) => a + b) / _cadenceHistory.length
         : 0.0;
 
-    final message = '▶▶ finishRun(): route 길이 = ${route.length}';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: Duration(seconds: 2),
-      ),
-    );
-
     return RunSummary(
       distanceKm: totalDistance / 1000,
       elapsedTime: elapsedTime,

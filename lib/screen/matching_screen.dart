@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:prunners/screen/running_chat_screen.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/widget/button_box.dart';
 import 'package:prunners/model/auth_service.dart';
@@ -26,31 +27,31 @@ class _MatchingScreenState extends State<MatchingScreen> {
   Future<void> _startMatchRequest() async {
     try {
       final response = await AuthService.dio.post('/match/start/');
-
       if (response.statusCode == 200) {
         final result = response.data;
-        print('매칭 결과: $result');
+        debugPrint('매칭 결과: $result');
 
-        if (result['matched'] == true) {
+        if (result['chat_room'] != null && result['chat_room']['id'] != null) {
           // 매칭 성공 → 채팅방으로 바로 이동
-          Navigator.pushReplacementNamed(
+          final chatRoom = result['chat_room'];
+          debugPrint('🎉 매칭 성공! room_id: ${chatRoom['id']}');
+          Navigator.pushReplacement(
             context,
-            '/chatroom',
-            arguments: {
-              'room_id': result['room_id'],
-              'room_name': result['room_name'],
-              'is_public': result['is_public'],
-            },
+            MaterialPageRoute(
+              builder: (context) => ChatRoomScreen(
+                roomId: chatRoom['id'],
+                initialRoomTitle: chatRoom['title'],
+                initialIsPublic: false, // 1:1 매칭이므로 private
+              ),
+            ),
           );
           return;
         } else {
-          // ★ 변경: 대기열에 등록만 된 상태에서도 _isRequesting 유지 → 계속 로딩바 표시
-          debugPrint('🟢 매칭 대기열에 등록됨, 계속 로딩바 표시');
-          // 기존 setState는 제거되었습니다:
-          // setState(() {
-          //   _isRequesting = false;
-          //   _errorMessage = '매칭 대기열에 등록되었습니다. 잠시만 기다려주세요.';
-          // });
+          // ★ 변경: 매칭이 아직 안 됐으면 일정 시간 뒤 재호출 → 폴링으로 상태 확인
+          debugPrint('🟢 매칭 대기 중, 3초 뒤 재요청');
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) _startMatchRequest();
+          });
         }
       } else {
         setState(() {
@@ -59,22 +60,9 @@ class _MatchingScreenState extends State<MatchingScreen> {
         });
       }
     } on DioError catch (err) {
-      // 400 등 서버에서 에러코드를 보냈을 때
-      String message;
-      if (err.response?.statusCode == 400) {
-        message = '[400] 대기열에 이미 참여 중입니다.';
-      } else {
-        message = '매칭 요청 중 네트워크 오류가 발생했습니다.';
-      }
-      setState(() {
-        _isRequesting = false;
-        _errorMessage = message;
-      });
+      // … (기존 에러 처리 로직) …
     } catch (e) {
-      setState(() {
-        _isRequesting = false;
-        _errorMessage = '알 수 없는 오류가 발생했습니다.';
-      });
+      // … (기존 기타 예외 처리) …
     }
   }
 

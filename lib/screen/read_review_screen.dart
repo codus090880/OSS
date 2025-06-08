@@ -122,29 +122,25 @@ class _ReadReviewScreenState extends State<ReadReviewScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 5, 20, 10),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButtonBox(
-                    text: '리뷰 작성하기',
-                    onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => WriteReviewScreen(
-                            courseId: widget.courseId,
-                            courseTitle: widget.coursetitle,
+                  padding: const EdgeInsets.fromLTRB(20, 5, 20, 10),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButtonBox(
+                      text: '리뷰 작성하기',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => WriteReviewScreen(
+                              courseId: widget.courseId,
+                              courseTitle: widget.coursetitle,
+                            ),
                           ),
-                        ),
-                      );
-                      // 리뷰 작성 후 성공적으로 돌아오면 리뷰 새로고침
-                      if (result == true) {
-                        fetchReviews();
-                      }
-                    },
-                    fontSize: 15,
-                  ),
-                ),
+                        );
+                      },
+                      fontSize: 15,
+                    ),
+                  )
               ),
               Expanded(
                 child: isLoading

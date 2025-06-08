@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:prunners/screen/home_screen.dart';
 import 'package:prunners/widget/outlined_button_box.dart';
 import 'package:prunners/widget/bottom_bar.dart';
 import 'package:prunners/model/auth_service.dart';
@@ -210,7 +211,10 @@ class _EvaluateScreenState extends State<EvaluateScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('모든 메이트 평가가 완료되었습니다')),
           );
-          Navigator.pop(context);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => HomeScreen()),  // ★ HomeScreen으로 이동
+          );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

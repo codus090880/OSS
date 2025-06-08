@@ -18,7 +18,7 @@ class ChatRoomScreen extends StatefulWidget {
     Key? key,
     required this.roomId,
     this.initialRoomTitle = '채팅방 제목',
-    this.initialIsPublic = true,
+    this.initialIsPublic = false,
   }) : super(key: key);
 
   @override

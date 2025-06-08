@@ -1,7 +1,9 @@
+import 'dart:ffi';
+
 class Course {
   final int course_id;
   final String title;
-  final String distance;
+  final double distance;
   final String imagePath;
   final String location;
   final List<String> tags;
@@ -19,7 +21,7 @@ class Course {
     return Course(
       course_id: json['course_id'],
       title: json['title'],
-      distance: json['distance'],
+      distance: (json['distance'] as num).toDouble(),
       location: json['location'],
       imagePath: json['image_url'],
       tags: List<String>.from(json['tags'] ?? []),

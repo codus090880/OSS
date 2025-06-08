@@ -26,8 +26,10 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
   void initState() {
     super.initState();
     // 공개 채팅방 목록과 내가 참여한 방 ID들을 동시에 가져옵니다.
-    _fetchPublicRooms();
-    _fetchMyRooms();
+    _fetchPublicRooms().whenComplete(() {
+      // 2) 공개 방 로드가 끝나면 내 방을 불러와서 _publicRooms에 병합
+      _fetchMyRooms();
+    });
   }
 
   /// 1) 공개 채팅방 목록 조회
@@ -42,9 +44,20 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
         '/chatrooms/public/nearby/',
       );
 
+      debugPrint('🔍 [_fetchPublicRooms] statusCode: ${response.statusCode}');
+      debugPrint('🔍 [_fetchPublicRooms] raw response.data: ${response.data}');
+
       if (response.statusCode == 200) {
         final data = response.data;
         if (data != null) {
+          debugPrint('🔍 [_fetchPublicRooms] data type: ${data.runtimeType}');
+          debugPrint('🔍 [_fetchPublicRooms] data length: ${data.length}');
+
+          // 각 항목 상세 확인
+          for (int i = 0; i < data.length; i++) {
+            debugPrint('🔍 [_fetchPublicRooms] item[$i]: ${data[i]}');
+          }
+
           final rooms = data
               .whereType<Map<String, dynamic>>()
               .map((item) => {
@@ -54,17 +67,36 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
           })
               .toList();
 
+          debugPrint('🔍 [_fetchPublicRooms] parsed rooms: $rooms');
+
+          final unique = <int>{};
+          final deduped = <Map<String, dynamic>>[];
+          for (var r in rooms) {
+            final id = r['room_id'] as int;
+            debugPrint('🔍 [_fetchPublicRooms] processing room_id: $id');
+            if (unique.add(id)) {
+              deduped.add(r);
+              debugPrint('🔍 [_fetchPublicRooms] added room_id: $id');
+            } else {
+              debugPrint('🔍 [_fetchPublicRooms] duplicate room_id: $id');
+            }
+          }
+
+          debugPrint('🔍 [_fetchPublicRooms] final deduped rooms: $deduped');
+
           setState(() {
-            _publicRooms = rooms;
+            _publicRooms = deduped;
             _loadingRooms = false;
           });
         } else {
+          debugPrint('🔍 [_fetchPublicRooms] data is null');
           setState(() {
             _publicRooms = [];
             _loadingRooms = false;
           });
         }
       } else {
+        debugPrint('🔍 [_fetchPublicRooms] non-200 status: ${response.statusCode}');
         setState(() {
           _errorMessage =
           '상태 코드 ${response.statusCode}로 방 목록을 가져오지 못했습니다.';
@@ -72,6 +104,9 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
         });
       }
     } on DioError catch (err) {
+      debugPrint('🔍 [_fetchPublicRooms] DioError: ${err.response?.statusCode}');
+      debugPrint('🔍 [_fetchPublicRooms] DioError data: ${err.response?.data}');
+
       String message;
       if (err.response?.statusCode == 400) {
         message = '현재 주변에 공개 채팅방이 없습니다.';
@@ -86,6 +121,7 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
         _publicRooms = [];
       });
     } catch (e) {
+      debugPrint('🔍 [_fetchPublicRooms] Exception: $e');
       setState(() {
         _loadingRooms = false;
         _errorMessage = '알 수 없는 오류가 발생했습니다.';
@@ -97,55 +133,71 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
   /// 2) 내가 이미 참여한 채팅방 ID들 조회
   Future<void> _fetchMyRooms() async {
     try {
-      // 서버가 List<dynamic> 형태로 room 객체 목록을 반환한다고 가정
       final response = await AuthService.dio.get<List<dynamic>>(
         '/chatrooms/my/',
       );
+      debugPrint('[/chatrooms/my/] statusCode=${response.statusCode}');
 
-      // raw data 확인용 디버깅
-      debugPrint('[/chatrooms/my/] 성공: statusCode=${response.statusCode}');
-      debugPrint('[/chatrooms/my/] raw data=${response.data}');
-
-      final List<dynamic> dataList = response.data ?? [];
+      final dataList = response.data ?? [];
 
       if (dataList.isNotEmpty) {
-        // 각 요소를 Map<String, dynamic>으로 간주하여 room_id 목록 생성
+        // 1) room_id 리스트 추출
         final ids = dataList
             .whereType<Map<String, dynamic>>()
             .map((e) => e['room_id'] as int)
             .toList();
         debugPrint('추출된 room_id들: $ids');
 
+        // 2) _publicRooms에 없는 내 방 추가 (distance_km는 0.0으로 임시 설정)
+        for (var item in dataList.whereType<Map<String, dynamic>>()) {
+          // 디버깅: item 전체 확인
+          debugPrint('🔍 fetchMyRooms item: $item');
+
+          final id = item['room_id'] as int;
+
+          // 디버깅: title 필드 확인
+          final rawTitle = item['title'];
+          debugPrint('🔍 raw title value: $rawTitle (type=${rawTitle.runtimeType})');
+
+          final title = (rawTitle as String?) ?? '나의 채팅방';
+          debugPrint('🔍 parsed title: $title');
+
+          if (!_publicRooms.any((r) => r['room_id'] == id)) {
+            _publicRooms.add({
+              'room_id': id,
+              'title': title,
+              'distance_km': 0.0,
+            });
+            // 디버깅: 추가 후 publicRooms 상태
+            debugPrint('🔍 _publicRooms updated: ${_publicRooms.last}');
+          }
+        } debugPrint('[/chatrooms/my/] raw data=${response.data}');
+
+
         setState(() {
           _joinedRoomIds = ids;
         });
       } else {
+        debugPrint('[/chatrooms/my/] 데이터가 비어 있습니다.');
         setState(() {
           _joinedRoomIds = [];
         });
-        debugPrint('[/chatrooms/my/] 데이터가 비어 있습니다.');
       }
     } on DioError catch (err) {
-      debugPrint('=== DioError 발생 (/chatrooms/my/) ===');
-      debugPrint('  .type           : ${err.type}');
-      debugPrint('  .message        : ${err.message}');
-      debugPrint('  .error          : ${err.error}');
-      debugPrint('  .statusCode     : ${err.response?.statusCode}');
-      debugPrint('  .response data  : ${err.response?.data}');
-      debugPrint('  .requestOptions.uri    : ${err.requestOptions.uri}');
-      debugPrint('  .requestOptions.method : ${err.requestOptions.method}');
-      debugPrint('  .requestOptions.headers: ${err.requestOptions.headers}');
+      debugPrint('=== DioError (/chatrooms/my/) ===\n'
+          'status: ${err.response?.statusCode}\n'
+          'data: ${err.response?.data}');
       setState(() {
         _joinedRoomIds = [];
       });
     } catch (e) {
-      debugPrint('=== 예외 발생 (/chatrooms/my/) ===');
-      debugPrint('  error: $e');
+      debugPrint('=== 예외 (/chatrooms/my/) ===\nerror: $e');
       setState(() {
         _joinedRoomIds = [];
       });
     }
   }
+
 
   void _enterDetail(int index) {
     final room = _publicRooms[index];

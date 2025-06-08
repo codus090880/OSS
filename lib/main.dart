@@ -52,15 +52,6 @@ void main() async {
   final enabled = prefs.getBool('pushEnabled') ?? false;
 
   if (enabled) {
-    await PushNotificationService.scheduleDailyFixed(
-      id: 1,
-      title: '상쾌한 아침입니다.',
-      body: '러닝 어떠신가요?',
-      hour: 7,
-      minute: 00,
-      payload: 'morning_greeting',
-    );
-
     final lastDateStr = prefs.getString('lastWeatherCheckDate');
     final todayStr = DateTime.now().toString().split(' ')[0];
 

@@ -150,7 +150,7 @@ class CourseCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           Text(
-            course.distance,
+            '${course.distance.toStringAsFixed(1)}km',
             style: const TextStyle(fontSize: 14, color: Colors.grey),
           ),
         ],
