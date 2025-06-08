@@ -38,23 +38,23 @@ class RunSummary {
     }
 
     return RunSummary(
-      distanceKm: (json['distance_km'] ?? 0).toDouble(),
-      elapsedTime: json['elapsed_time']?.toString() ?? '00:00:00',
+      distanceKm: (json['distanceKm'] ?? 0).toDouble(),
+      elapsedTime: json['elapsedTime']?.toString() ?? '00:00:00',
       calories: (json['calories'] ?? 0).toDouble(),
-      averageSpeedKmh: (json['avg_speed_kmh'] ?? 0).toDouble(),
-      cadenceSpm: (json['cadence_spm'] ?? 0).toDouble(),
+      averageSpeedKmh: (json['averageSpeedKmh'] ?? 0).toDouble(),
+      cadenceSpm: (json['cadenceSpm'] ?? 0).toDouble(),
       route: parsedRoute,
-      dateTime: DateTime.tryParse(json['date_time']?.toString() ?? '') ?? DateTime.now(),
+      dateTime: DateTime.tryParse(json['dateTime']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'distance_km': distanceKm,
-    'elapsed_time': elapsedTime,
+    'distanceKm': distanceKm,
+    'elapsedTime': elapsedTime,
     'calories': calories,
-    'avg_speed_kmh': averageSpeedKmh,
-    'cadence_spm': cadenceSpm,
-    'date_time': dateTime.toIso8601String(),
+    'averageSpeedKmh': averageSpeedKmh,
+    'cadenceSpm': cadenceSpm,
+    'dateTime': dateTime.toIso8601String(),
     'route': route
         .map((p) => {'lat': p.latitude, 'lng': p.longitude})
         .toList(),

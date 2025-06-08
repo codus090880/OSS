@@ -103,10 +103,14 @@ class _RunningScreenState extends State<RunningScreen> {
 
     // 4) 서버에 POST (예외 허용)
     try {
+      // 4.1) 업로드 페이로드 확인
+      final payload = summary.toJson();
+      debugPrint('🟢 step4.1: 업로드할 데이터 = $payload');
+
       debugPrint('🟢 step4: /upload_course 요청 시작');
       final resp = await AuthService.dio.post(
         '/upload_course/',
-        data: summary.toJson(),
+        data: payload,
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -114,9 +118,13 @@ class _RunningScreenState extends State<RunningScreen> {
           },
         ),
       );
+
       debugPrint('🟢 step5: /upload_course 응답 status = ${resp.statusCode}');
-    } catch (e) {
+      // 5.1) 응답 바디 확인
+      debugPrint('🟢 step5.1: /upload_course 응답 데이터 = ${resp.data}');
+    } catch (e, st) {
       debugPrint('❌ /upload_course 업로드 실패: $e');
+      debugPrint('❌ StackTrace: $st');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('업로드는 실패했지만 기록은 저장되었습니다.')),
       );
@@ -133,6 +141,7 @@ class _RunningScreenState extends State<RunningScreen> {
           data: {'room_id': widget.roomId},
         );
         debugPrint('🟢 step7: /end_running 응답 status = ${endResp.statusCode}');
+        debugPrint('🟢 step7.1: /end_running 응답 데이터 = ${endResp.data}');
 
         if (endResp.statusCode == 200 && endResp.data != null) {
           sessionId = endResp.data!['session_id'] as int;
@@ -149,8 +158,9 @@ class _RunningScreenState extends State<RunningScreen> {
             ),
           ),
         );
-      } catch (e) {
+      } catch (e, st) {
         debugPrint('❌ stepX: 예외 발생 (/end_running): $e');
+        debugPrint('❌ StackTrace: $st');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('채팅방 종료 처리 중 알 수 없는 에러: $e')),
         );

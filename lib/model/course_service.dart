@@ -8,7 +8,7 @@ class CourseService {
   Future<List<Course>> getNearbyCourse(double lat, double lon) async {
     try {
       final response = await _dio.get(
-        '/courses/nearby',
+        '/courses/nearby/',
         queryParameters: {
           'lat': lat.toString(),
           'lon': lon.toString(),
@@ -28,7 +28,7 @@ class CourseService {
   // popularCourse 도 동일
   Future<List<Course>> getPopularCourse() async {
     try {
-      final response = await _dio.get('/courses/popular');
+      final response = await _dio.get('/courses/popular/');
       print('[PopularCourse] Response: ${response.data}');
 
       final List<dynamic> data = response.data;

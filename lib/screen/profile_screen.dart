@@ -88,6 +88,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // 4. 갤러리에서 선택된 원본 파일을 profile.jpg로 복사
       final newFile = await File(picked.path).copy(newPath);
 
+      await FileImage(newFile).evict();
+
       // 5. 상태 업데이트 및 SharedPreferences에 경로 저장
       setState(() {
         _profileImage = newFile;

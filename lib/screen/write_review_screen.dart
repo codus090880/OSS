@@ -69,7 +69,7 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('리뷰가 등록되었습니다')),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('등록 실패: ${response.statusCode}')),

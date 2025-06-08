@@ -83,20 +83,45 @@ class _RecordScreenState extends State<RecordScreen> {
   Future<void> _fetchReport() async {
     try {
       final dio = AuthService.dio;
-      final response = await dio.get('/api/ai_feedback/');
+
+      // 1️⃣ 요청 시작 로그
+      debugPrint('🟢 _fetchReport: 요청 시작 to /api/ai_feedback/');
+
+      final response = await dio.get('/api/api/ai_feedback/');
+
+      // 2️⃣ 상태 코드 및 전체 응답 로그
+      debugPrint('🟢 _fetchReport: statusCode = ${response.statusCode}');
+      debugPrint('🟢 _fetchReport: headers = ${response.headers.map}');
+      debugPrint('🟢 _fetchReport: raw data = ${response.data}');
+
       final data = response.data;
-      final reportText = (data is Map && data.containsKey('report'))
-          ? data['report'].toString()
+
+      // 3️⃣ 데이터 타입 및 키 유무 확인
+      debugPrint('🟢 _fetchReport: data.runtimeType = ${data.runtimeType}');
+      if (data is Map) {
+        debugPrint('🟢 _fetchReport: contains ai_feedback key? ${data.containsKey('ai_feedback')}');
+        if (data.containsKey('ai_feedback')) {
+          debugPrint('🟢 _fetchReport: ai_feedback value = ${data['ai_feedback']}');
+        }
+      }
+
+      // 4️⃣ 최종 파싱
+      final reportText = (data is Map && data.containsKey('ai_feedback'))
+          ? data['ai_feedback'].toString()
           : data.toString();
+
+      debugPrint('🟢 _fetchReport: reportText = $reportText');
 
       setState(() {
         _userReport = reportText;
         _loadingReport = false;
       });
-    } catch (e) {
-      print('[ERROR] fetching report: $e');
+    } catch (e, st) {
+      // 5️⃣ 에러 발생 시 전체 스택트레이스 로그
+      debugPrint('❌ _fetchReport Error: $e');
+      debugPrint('❌ StackTrace: $st');
       setState(() {
-        _userReport = '리포트를 불러오는 중 오류가 발생했습니다.';
+        _userReport = 'AI 리포트를 생성하기 위해, 우선 5번의 러닝이 필요합니다!';
         _loadingReport = false;
       });
     }
@@ -137,26 +162,26 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      //backgroundColor: const Color(0xFFF7F8F9),
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(60),
         child: CustomTopBar(title: '나의 기록'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 월·년 네비게이션
+            // 1) 월·년 네비게이션
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
                   icon: Icon(Icons.chevron_left),
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay =
-                          DateTime(_focusedDay.year, _focusedDay.month - 1);
-                    });
-                  },
+                  onPressed: () => setState(() {
+                    _focusedDay =
+                        DateTime(_focusedDay.year, _focusedDay.month - 1);
+                  }),
                 ),
                 Text(
                   '${_focusedDay.year}년 ${_focusedDay.month}월',
@@ -164,18 +189,17 @@ class _RecordScreenState extends State<RecordScreen> {
                 ),
                 IconButton(
                   icon: Icon(Icons.chevron_right),
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay =
-                          DateTime(_focusedDay.year, _focusedDay.month + 1);
-                    });
-                  },
+                  onPressed: () => setState(() {
+                    _focusedDay =
+                        DateTime(_focusedDay.year, _focusedDay.month + 1);
+                  }),
                 ),
               ],
             ),
 
-            SizedBox(height: 8),
-            // 달력
+            const SizedBox(height: 8),
+
+            // 2) 달력
             TableCalendar(
               firstDay: DateTime(2000),
               lastDay: DateTime(2100),
@@ -195,12 +219,10 @@ class _RecordScreenState extends State<RecordScreen> {
                   _focusedDay = focused;
                 });
               },
-              onPageChanged: (focused) {
-                setState(() {
-                  _focusedDay = focused;
-                  _selectedDay = null;
-                });
-              },
+              onPageChanged: (focused) => setState(() {
+                _focusedDay = focused;
+                _selectedDay = null;
+              }),
               calendarBuilders: CalendarBuilders(
                 defaultBuilder: (ctx, date, _) {
                   final key = DateTime(date.year, date.month, date.day);
@@ -233,8 +255,9 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
             ),
 
-            SizedBox(height: 12),
-            // 사용자 리포트 영역
+            const SizedBox(height: 12),
+
+            // 3) 사용자 리포트
             if (_loadingReport)
               Center(child: CircularProgressIndicator())
             else
@@ -246,34 +269,35 @@ class _RecordScreenState extends State<RecordScreen> {
                   color: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade300, width: 1),
+                    side:
+                    BorderSide(color: Colors.grey.shade300, width: 1),
                   ),
                 ),
                 child: Text(
                   _userReport ?? '표시할 리포트가 없습니다.',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF333333)),
+                  style:
+                  TextStyle(fontSize: 14, color: Color(0xFF333333)),
                 ),
               ),
-            SizedBox(height: 12),
 
-            // 로딩 중일 때
+            const SizedBox(height: 12),
+
+            // 4) 기록 로딩 / 리스트
             if (_loadingRecords)
-              Expanded(child: Center(child: CircularProgressIndicator())),
+              Center(child: CircularProgressIndicator()),
 
-            // 선택된 날짜의 RunSummary 리스트
-            if (!_loadingRecords && _selectedDay != null) ...[
-              Expanded(
-                child: ListView(
-                  children: _recordsByDate[
-                  DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!
-                      .map((summary) => GestureDetector(
-                    onTap: () => _showOptionsMenu(summary),
-                    child: ActivityFrame(summary: summary),
-                  ))
-                      .toList(),
+            if (!_loadingRecords && _selectedDay != null)
+              ..._recordsByDate[
+              DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!
+                  .map(
+                    (summary) => GestureDetector(
+                  onTap: () => _showOptionsMenu(summary),
+                  child: ActivityFrame(summary: summary),
                 ),
-              ),
-            ],
+              )
+                  .toList(),
+
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -308,7 +332,6 @@ class ActivityFrame extends StatelessWidget {
         color: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         shadows: [
-          BoxShadow(color: Color(0x192E3176), blurRadius: 28, offset: Offset(0, 4))
         ],
       ),
       child: Row(

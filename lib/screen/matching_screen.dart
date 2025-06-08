@@ -44,14 +44,15 @@ class _MatchingScreenState extends State<MatchingScreen> {
           );
           return;
         } else {
-          // matched == false인 경우: 대기열에 등록만 된 상태
-          setState(() {
-            _isRequesting = false;
-            _errorMessage = '매칭 대기열에 등록되었습니다. 잠시만 기다려주세요.';
-          });
+          // ★ 변경: 대기열에 등록만 된 상태에서도 _isRequesting 유지 → 계속 로딩바 표시
+          debugPrint('🟢 매칭 대기열에 등록됨, 계속 로딩바 표시');
+          // 기존 setState는 제거되었습니다:
+          // setState(() {
+          //   _isRequesting = false;
+          //   _errorMessage = '매칭 대기열에 등록되었습니다. 잠시만 기다려주세요.';
+          // });
         }
       } else {
-        // statusCode가 200이 아닐 때
         setState(() {
           _isRequesting = false;
           _errorMessage = '매칭 요청 실패: ${response.statusCode}';

@@ -74,7 +74,7 @@ class _MatchingListScreenState extends State<MatchingListScreen> {
     } on DioError catch (err) {
       String message;
       if (err.response?.statusCode == 400) {
-        message = '위치 정보가 없습니다. 위치 권한을 확인해주세요.';
+        message = '현재 주변에 공개 채팅방이 없습니다.';
       } else if (err.response?.statusCode == 403) {
         message = '공개 채팅방 목록을 볼 권한이 없습니다.';
       } else {
