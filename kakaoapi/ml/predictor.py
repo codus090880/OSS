@@ -2,9 +2,25 @@ import joblib
 import pandas as pd
 from typing import Tuple
 import os
-
+from kakaoapi.ml.train_models import compute_fatigue_index
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, 'models')
+
+
+def convert_elapsed_to_min(s):
+    if isinstance(s, str):
+        parts = s.split(':')
+        try:
+            if len(parts) == 2:
+                return int(parts[0]) + int(parts[1]) // 60
+            elif len(parts) == 3:
+                return int(parts[0]) * 60 + int(parts[1])
+        except:
+            pass
+    try:
+        return int(float(s))
+    except:
+        return None
 
 # 러닝 유형 추천 함수 (rule-based)
 def recommend_run_type(distance: float, intensity: str) -> Tuple[str, str]:
@@ -26,70 +42,115 @@ def recommend_run_type(distance: float, intensity: str) -> Tuple[str, str]:
     return 'Unknown', '알 수 없는 유형입니다.'
 
 # 예측값 보정 함수
-def adjust_prediction(pred: float, user_id: int, df: pd.DataFrame) -> float:
-    user_avg = df[df['user_id'] == user_id]['distance_km'].tail(5).mean()
+def adjust_prediction(pred: float, user_email: str, df: pd.DataFrame) -> float:
+    user_avg = df[df['user_email'] == user_email]['distanceKm'].tail(5).mean()
     upper = user_avg * 1.2
     lower = user_avg * 0.8
     return min(max(pred, lower), upper)
 
-# 예측 추천 전체 파이프라인
-def predict_run_recommendation(input_df: pd.DataFrame, user_id: int) -> str:
-    """
-    1회 실행용 전체 파이프라인: 거리 예측 → 보정 → 강도 예측 → 유형 추천
-    input_df는 RunHistory 데이터프레임 전체 (load_runhistory_dataframe() 출력값)
-    """
-    # 최신 한 줄 (사용자)
-    user_df = input_df[input_df['user_id'] == user_id].sort_values(by='date')
+
+
+# def predict_run_recommendation(input_df: pd.DataFrame, user) -> str:
+#     user_df = input_df[input_df['user_email'] == user.email].sort_values(by='dateTime')
+#     if user_df.empty:
+#         return "해당 사용자의 러닝 데이터가 없습니다."
+    
+
+#     features = ['distanceKm', 'pace', 'heart_rate', 'elapsedTime', 'fatigue_index', 'gap_days']
+#     recent['fatigue_index'] = recent.apply(compute_fatigue_index, axis=1)
+#     recent = user_df.tail(5)
+
+#     x_input = recent[features].mean().values.reshape(1, -1)
+
+#     # 모델 로딩
+#     reg = joblib.load(os.path.join(MODEL_DIR, 'global_distance_predictor.pkl'))
+#     clf = joblib.load(os.path.join(MODEL_DIR, 'global_intensity_classifier.pkl'))
+
+#     raw_pred_distance = reg.predict(x_input)[0]
+#     adjusted_distance = adjust_prediction(raw_pred_distance, user, input_df)
+#     pred_intensity = clf.predict(x_input)[0]
+
+#     run_type, explanation = recommend_run_type(adjusted_distance, pred_intensity)
+
+#     recent_avg_pace = recent['pace'].mean()
+#     recent_avg_distance = recent['distanceKm'].mean()
+
+#     pace_change = recent_avg_pace - recent.iloc[-1]['pace']
+#     distance_change = adjusted_distance - recent_avg_distance
+
+#     pace_feedback = "✨ 예전보다 더 빠르게 달렸어요!" if pace_change > 0.2 else "속도는 큰 변화가 없어요."
+#     distance_feedback = "💪 거리도 이전보다 길어졌네요!" if distance_change > 0.3 else "거리는 비슷한 수준이에요."
+
+#     result = f"""🏃‍♀️ [AI 러닝 피드백 리포트]
+
+#     👟 다음 러닝 추천 정보:
+#     - 📏 예측 거리: {adjusted_distance:.2f} km
+#     - 💡 예상 강도: {pred_intensity} 등급
+#     - 🧭 추천 유형: {run_type}
+
+#     🧠 AI 코멘트:
+#     {explanation}
+
+#     📊 최근 기록과 비교한 분석:
+#     - {pace_feedback}
+#     - {distance_feedback}
+
+#     🔥 이 피드백은 최근 러닝 데이터를 기반으로 생성되었으며,
+#     지속적인 훈련 성과 향상과 회복의 균형을 위해 설계되었습니다.
+#     안전하고 꾸준한 러닝을 이어가 보세요!
+#     """
+
+#     return result
+def predict_run_recommendation(input_df: pd.DataFrame, user) -> str:
+    user_df = input_df[input_df['user_email'] == user.email].sort_values(by='dateTime')
     if user_df.empty:
         return "해당 사용자의 러닝 데이터가 없습니다."
 
-    features = ['distance_km', 'pace', 'heart_rate', 'duration_min', 'fatigue_index', 'gap_days']
-    recent_avg = user_df.tail(5)[features].mean()
+    # 최근 5개만 추출
+    recent = user_df.tail(5)
 
-    
-    x_input = recent_avg.values.reshape(1, -1)
+    # 피로도 계산
+    recent['fatigue_index'] = recent.apply(compute_fatigue_index, axis=1)
+
+    features = ['distanceKm', 'pace', 'heart_rate', 'elapsedTime', 'fatigue_index', 'gap_days']
+    x_input = recent[features].mean().values.reshape(1, -1)
 
     # 모델 로딩
     reg = joblib.load(os.path.join(MODEL_DIR, 'global_distance_predictor.pkl'))
-    clf = joblib.load(os.path.join(MODEL_DIR,'global_intensity_classifier.pkl'))
+    clf = joblib.load(os.path.join(MODEL_DIR, 'global_intensity_classifier.pkl'))
 
-    # 예측
     raw_pred_distance = reg.predict(x_input)[0]
-    adjusted_distance = adjust_prediction(raw_pred_distance, user_id, input_df)
+    adjusted_distance = adjust_prediction(raw_pred_distance, user, input_df)
     pred_intensity = clf.predict(x_input)[0]
 
-    # 유형 추천
     run_type, explanation = recommend_run_type(adjusted_distance, pred_intensity)
 
-    # 최근 평균과 비교
-    recent_runs = user_df.tail(5)
-    recent_avg_pace = recent_runs['pace'].mean()
-    recent_avg_distance = recent_runs['distance_km'].mean()
+    recent_avg_pace = recent['pace'].mean()
+    recent_avg_distance = recent['distanceKm'].mean()
 
-    pace_change = recent_avg_pace - recent_avg['pace']  # +면 느려짐, -면 향상
+    pace_change = recent_avg_pace - recent.iloc[-1]['pace']
     distance_change = adjusted_distance - recent_avg_distance
 
     pace_feedback = "✨ 예전보다 더 빠르게 달렸어요!" if pace_change > 0.2 else "속도는 큰 변화가 없어요."
     distance_feedback = "💪 거리도 이전보다 길어졌네요!" if distance_change > 0.3 else "거리는 비슷한 수준이에요."
 
-    # 최종 출력 메시지에 추가
     result = f"""🏃‍♀️ [AI 러닝 피드백 리포트]
 
-    👟 다음 러닝 추천 정보:
-    - 📏 예측 거리: {adjusted_distance:.2f} km
-    - 💡 예상 강도: {pred_intensity} 등급
-    - 🧭 추천 유형: {run_type}
+👟 다음 러닝 추천 정보:
+- 📏 예측 거리: {adjusted_distance:.2f} km
+- 💡 예상 강도: {pred_intensity} 등급
+- 🧭 추천 유형: {run_type}
 
-    🧠 AI 코멘트:
-    {explanation}
+🧠 AI 코멘트:
+{explanation}
 
-    📊 최근 기록과 비교한 분석:
-    - {pace_feedback}
-    - {distance_feedback}
+📊 최근 기록과 비교한 분석:
+- {pace_feedback}
+- {distance_feedback}
 
-    🔥 이 피드백은 최근 러닝 데이터를 기반으로 생성되었으며,
-    지속적인 훈련 성과 향상과 회복의 균형을 위해 설계되었습니다.
-    안전하고 꾸준한 러닝을 이어가 보세요!
-    """
+🔥 이 피드백은 최근 러닝 데이터를 기반으로 생성되었으며,
+지속적인 훈련 성과 향상과 회복의 균형을 위해 설계되었습니다.
+안전하고 꾸준한 러닝을 이어가 보세요!
+"""
 
     return result

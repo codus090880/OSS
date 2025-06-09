@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import MatchRequest, MatchPreference, UserLocation, User
+from .models import MatchRequest,RunHistory, MatchPreference, UserLocation, User , CourseInfo
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -14,8 +14,11 @@ class MatchRequestAdmin(admin.ModelAdmin):
 
 @admin.register(MatchPreference)
 class MatchPreferenceAdmin(admin.ModelAdmin):
-    list_display = ('user', 'preferred_gender', 'preferred_distance', 'preferred_time', 'allow_push')
+    list_display = ('user', 'preferred_gender', 'preferred_distance_range')  # ✅ 여기!
 
 @admin.register(UserLocation)
 class UserLocationAdmin(admin.ModelAdmin):
     list_display = ('user', 'latitude', 'longitude', 'updated_at')
+
+admin.site.register(CourseInfo)
+admin.site.register(RunHistory)

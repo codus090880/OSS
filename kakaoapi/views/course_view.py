@@ -28,7 +28,11 @@ def get_nearby_courses(request):
     # 인기도 순 정렬
     nearby_courses.sort(key=lambda c: c.popularity, reverse=True)
 
-    serializer = CourseInfoSerializer(nearby_courses, many=True)
+    serializer = CourseInfoSerializer(
+    nearby_courses,
+    many=True,
+    context={'user_lat': lat, 'user_lon': lon}
+    )
     return Response(serializer.data)
 
 #인기 코스 리스트

@@ -1,8 +1,8 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
-from django.conf import settings
 from .utils import generate_static_map_url, calculate_distance
-# from django.contrib.gis.db import models as gis_models
+from django.conf import settings
+
 # 사용자 관리자 클래스
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -10,7 +10,7 @@ class UserManager(BaseUserManager):
             raise ValueError('이메일은 필수입니다.')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)  # 비밀번호 해싱
+        user.set_password(password)
         user.save(using=self._db)
         return user
 
@@ -33,6 +33,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     ]
 
     email = models.EmailField(unique=True)
+    age = models.PositiveIntegerField(null=True, blank=True)
+    height = models.FloatField(null=True, blank=True)
+    weight = models.FloatField(null=True, blank=True)
     username = models.CharField(max_length=50)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
     grade_level = models.CharField(max_length=20, choices=GRADE_CHOICES)
@@ -40,7 +43,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     temperature = models.DecimalField(max_digits=4, decimal_places=2, default=36.5)
     profile_image = models.ImageField(upload_to='profiles/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
@@ -52,8 +54,35 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+class FriendRequest(models.Model):
+    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='friend_requests_sent')
+    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='friend_requests_received')
+    is_accepted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
-# 사용자 위치 정보 (거리 기반 매칭용)
+    class Meta:
+        unique_together = ('from_user', 'to_user')
+
+class FriendChatRoom(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"FriendChatRoom #{self.id}"
+
+class FriendChatParticipant(models.Model):
+    chat_room = models.ForeignKey(FriendChatRoom, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('chat_room', 'user')
+
+class FriendChatMessage(models.Model):
+    room = models.ForeignKey(FriendChatRoom, on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField(blank=True)
+    image = models.ImageField(upload_to='chat_images/', null=True, blank=True)
+    sent_at = models.DateTimeField(auto_now_add=True)
+
 class UserLocation(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     latitude = models.FloatField()
@@ -63,46 +92,68 @@ class UserLocation(models.Model):
     def __str__(self):
         return f"{self.user.username} 위치"
 
-
-# 1:1 매칭 요청 (수락 시 채팅방 생성)
 class MatchRequest(models.Model):
     from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_requests')
     to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_requests')
     distance_km = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)
-    accepted = models.BooleanField(null=True)  # None=대기, True=수락, False=거절
-    is_finalized = models.BooleanField(default=False) # 중복 매칭 방지용용
-
+    accepted = models.BooleanField(null=True)
+    is_finalized = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.from_user} → {self.to_user}"
 
+class MatchPreference(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    preferred_gender = models.CharField(max_length=10, choices=User.GENDER_CHOICES, default='any')
+    preferred_distance_range = models.CharField(
+        max_length=10,
+        choices=[
+            ("3-5", "3~5km"),
+            ("5-7", "5~7km"),
+            ("7-10", "7~10km"),
+            ("10+", "10km 이상")
+        ],
+        default="5-7"
+    )
+    preferred_time = models.TimeField(null=True, blank=True)
+    allow_push = models.BooleanField(default=True)
 
-# 채팅방
+    def __str__(self):
+        return f"{self.user.username}의 매칭 선호"
+
+class MatchQueue(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    preferred_gender = models.CharField(max_length=10, choices=User.GENDER_CHOICES, default='any')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} 매칭 대기 중"
+
 class ChatRoom(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_chatrooms')
-    is_locked = models.BooleanField(default=False)  # 잠금 시 입장 제한
+    is_locked = models.BooleanField(default=False)
+    title = models.CharField(max_length=100, default='러닝 채팅방')
     created_at = models.DateTimeField(auto_now_add=True)
-    scheduled_time = models.DateTimeField(null=True, blank=True)  # 예정 러닝 시간
+    scheduled_time = models.DateTimeField(null=True, blank=True)
     expected_distance_km = models.FloatField(null=True, blank=True)
-
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
 
     def __str__(self):
         return f"ChatRoom #{self.id}"
 
-
-# 채팅방 참가자
 class ChatRoomParticipant(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='participants')
     joined_at = models.DateTimeField(auto_now_add=True)
-    is_approved = models.BooleanField(default=False)  # 초대 요청 수락 여부
+    is_approved = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('user', 'chat_room')  # 중복 참가 방지
+        unique_together = ('user', 'chat_room')
 
-
-# 채팅 메시지
 class ChatMessage(models.Model):
     room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -125,9 +176,6 @@ class ChatJoinRequest(models.Model):
     class Meta:
         unique_together = ('chat_room', 'requester')
 
-
-
-# 신고 기능
 class Report(models.Model):
     reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_made')
     reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_received')
@@ -138,52 +186,49 @@ class Report(models.Model):
     def __str__(self):
         return f"Report: {self.reporter} → {self.reported_user}"
 
-# 매칭 선호 정보 저장장
-class MatchPreference(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    preferred_distance = models.FloatField(default=5.0)  # km
-    preferred_gender = models.CharField(max_length=10, choices=User.GENDER_CHOICES, default='any')
-    preferred_time = models.TimeField(null=True, blank=True)  # 희망 러닝 시간
-    allow_push = models.BooleanField(default=True)  # 푸시 알림 허용 여부
+class MateReport(models.Model):
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mate_reports_made')
+    target = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mate_reports_received')
+    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username}의 매칭 선호"
+        return f"{self.reporter.username} → {self.target.username} 신고"
 
-# 러닝 기록 및 후 평가
 class RunningSession(models.Model):
     chat_room = models.OneToOneField(ChatRoom, on_delete=models.CASCADE)
     date = models.DateField()
     total_distance_km = models.FloatField()
     total_duration_min = models.IntegerField()
-    ended = models.BooleanField(default=False)  # 러닝 완료 여부
+    ended = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.chat_room.id} 러닝 세션"
 
-# 러닝 후 사용자 상호 평가
 class RunningFeedback(models.Model):
     session = models.ForeignKey(RunningSession, on_delete=models.CASCADE)
     evaluator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_feedbacks')
     target = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_feedbacks')
-    rating = models.IntegerField()  # 1~5점 등급
+    rating = models.IntegerField()
     comment = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('session', 'evaluator', 'target')  # 중복 평가 방지
+        unique_together = ('session', 'evaluator', 'target')
 
     def __str__(self):
         return f"{self.evaluator} → {self.target} 평가"
-    
+
 # 코스 정보
 class CourseInfo(models.Model):
     name = models.CharField(max_length=50)
     distance_km = models.FloatField(blank=True)
     popularity = models.IntegerField(default=0) # 인기도(달린 횟수)
 
-    latitude = models.FloatField(blank=True)
-    longitude = models.FloatField(blank=True)
-    location = models.CharField(max_length=255, blank=True)
+    latitude = models.FloatField(blank=True,null=True)
+    longitude = models.FloatField(blank=True,null=True)
+    location = models.CharField(max_length=255, blank=True,null=True)
     polyline_points = models.JSONField(default=list)
     tags = models.JSONField(default=list)
     image_url = models.URLField(blank=True, null=True)
@@ -231,7 +276,7 @@ class CourseReview(models.Model):
     course = models.ForeignKey(CourseInfo, on_delete=models.CASCADE, related_name='reviews')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='course_reviews')
     
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True,null=True)
     rating = models.IntegerField() # 1~5점 사이의 평점
     comment = models.TextField(blank=True)
     course_photo = models.ImageField(upload_to='review_images/', null=True, blank=True)
@@ -243,41 +288,25 @@ class CourseReview(models.Model):
     def __str__(self):
         return f"{self.user.username}의 {self.course.name} 리뷰 ({self.rating}점)"
     
-# 러닝 기록
 class RunHistory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='run_histories')
     course = models.ForeignKey(CourseInfo, on_delete=models.SET_NULL, null=True, blank=True, related_name='runs')
+    
+    # 기준 필드 (첫 번째 모델 기준)
     distanceKm = models.FloatField(blank=True, null=True)
     elapsedTime = models.CharField(max_length=50, blank=True, null=True)
     calories = models.FloatField(blank=True, null=True)
     averageSpeedKmh = models.FloatField(blank=True, null=True)
     cadenceSpm = models.FloatField(blank=True, null=True)
     route = models.JSONField(default=list, blank=True, null=True)
-    dateTime = models.DateTimeField(auto_now_add=True)
+    dateTime = models.DateTimeField(auto_now_add=True,null=True,blank= True)
 
-    class Meta:
-        ordering = ['-dateTime'] # 최신순으로 정렬
-
-    def __str__(self):
-        return f"{self.user.username}의 러닝 ({self.dateTime}, {self.distanceKm}km)"
-
-"""
-# 러닝 기록
-class RunHistory(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='run_histories')
-    course = models.ForeignKey(CourseInfo, on_delete=models.SET_NULL, null=True, blank=True, related_name='runs')
-    date = models.DateField()  # 달린 날짜
-    start_time = models.TimeField()  # 시작 시간
-    distance_km = models.FloatField()  # 기존 distance → distance_km
-    duration_min = models.IntegerField()  # 기존 run_time → duration_min
-    cadence = models.IntegerField()
+    # 추가된 분석/예측 관련 필드 (두 번째 모델에서 가져옴)
     heart_rate = models.IntegerField(null=True, blank=True, help_text="평균 심박수 (bpm)")
-
-    pace = models.FloatField(default=6.0, help_text="분/km")  # ✅ 추가
-    gap_days = models.IntegerField(null=True, blank=True, help_text="이전 러닝과의 간격 일 수")  # ✅ 추가
-    fatigue_index = models.FloatField(null=True, blank=True, help_text="피로도 추정치")  # ✅ 추가
-    is_challenge = models.BooleanField(default=False, help_text="챌린지 참여 여부")  # ✅ 추가
-
+    pace = models.FloatField(default=6.0, help_text="분/km")
+    gap_days = models.IntegerField(null=True, blank=True, help_text="이전 러닝과의 간격 일 수")
+    fatigue_index = models.FloatField(null=True, blank=True, help_text="피로도 추정치")
+    is_challenge = models.BooleanField(default=False, help_text="챌린지 참여 여부")
     run_type = models.CharField(
         max_length=20,
         choices=[
@@ -289,19 +318,12 @@ class RunHistory(models.Model):
         null=True,
         blank=True,
         help_text="러닝 유형 (Optional)"
-    )  # ✅ 추가
-
-    predicted_distance = models.FloatField(null=True, blank=True)  # ✅ 추가
-    predicted_intensity = models.CharField(max_length=10, null=True, blank=True)  # ✅ 추가
+    )
+    predicted_distance = models.FloatField(null=True, blank=True)
+    predicted_intensity = models.CharField(max_length=10, null=True, blank=True)
 
     class Meta:
-        ordering = ['-date', '-start_time']  # 최신순 정렬
+        ordering = ['-dateTime']  # 최신순 정렬
 
     def __str__(self):
-        return f"{self.user.username}의 러닝 ({self.date}, {self.distance_km}km)"
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        if self.course:
-            self.course.update_popularity()  # 코스 인기도 업데이트
-"""
+        return f"{self.user.username}의 러닝 ({self.dateTime}, {self.distanceKm}km)"

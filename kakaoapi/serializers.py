@@ -1,8 +1,7 @@
-# kakaoapi/serializers.py
 from rest_framework import serializers
 from .models import User, CourseInfo, CourseReview, RunHistory
-
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .utils import calculate_distance
 
 class UserSignupSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,13 +10,13 @@ class UserSignupSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)  # 여기 쉼표(,) 제거 필요
+        return User.objects.create_user(**validated_data)
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token['email'] = user.email  # 원하는 정보 추가 가능
+        token['email'] = user.email
         token['username'] = user.username
         return token
 
@@ -29,12 +28,21 @@ class CourseInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseInfo
         fields = [
-            'course_id', 'title', 'distance', 'location',
-            'image_url', 'tags'
+            'course_id', 'title', 'distance',
+            'location', 'image_url', 'tags'
         ]
 
     def get_distance(self, obj):
-        return f"{obj.distance_km} km"
+        user_lat = self.context.get('user_lat')
+        user_lon = self.context.get('user_lon')
+
+        if user_lat is None or user_lon is None:
+            return None
+
+        return round(calculate_distance(
+            user_lat, user_lon,
+            obj.latitude, obj.longitude
+        ), 2)
 
 class CourseReviewCreateSerializer(serializers.ModelSerializer):
     nickname = serializers.SerializerMethodField()
@@ -47,12 +55,11 @@ class CourseReviewCreateSerializer(serializers.ModelSerializer):
         write_only=True
     )
     content = serializers.CharField(source='comment', write_only=True)
-
     class Meta:
         model = CourseReview
         fields = ['nickname', 'course_id', 'rating', 'content', 'images']
         extra_kwargs = {
-            'course': {'write_only': True},  # course_id는 요청에서만 필요
+            'course': {'write_only': True},
         }
 
     def get_nickname(self, obj):
@@ -65,7 +72,7 @@ class CourseReviewCreateSerializer(serializers.ModelSerializer):
 class CourseReviewListSerializer(serializers.ModelSerializer):
     nickname = serializers.CharField(source='user.username')
     images = serializers.SerializerMethodField()
-    date = serializers.DateTimeField(source='created_at')
+    date = serializers.DateTimeField(source='created_at', format="%Y-%m-%d")
 
     class Meta:
         model = CourseReview
@@ -78,8 +85,11 @@ class CourseReviewListSerializer(serializers.ModelSerializer):
         elif obj.course_photo:
             return [obj.course_photo.url]
         return None
-    
+
 class RunHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = RunHistory
-        fields = ['distanceKm', 'elapsedTime', 'calories', 'averageSpeedKmh', 'cadenceSpm', 'route', 'dateTime']
+        fields = [
+            'distanceKm', 'elapsedTime', 'cadenceSpm', 'heart_rate',
+            'dateTime', 'course'
+        ]

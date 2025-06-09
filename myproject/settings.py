@@ -1,5 +1,6 @@
 from pathlib import Path
 from corsheaders.defaults import default_headers, default_methods
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,11 +27,14 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    #'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
+CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
 
 ROOT_URLCONF = 'myproject.urls'
 
@@ -54,7 +58,10 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
 }
-
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # 필요시 함께 조정
+}
 
 WSGI_APPLICATION = 'myproject.wsgi.application'
 
@@ -106,3 +113,11 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 GOOGLE_MAPS_API_KEY = "AIzaSyD-uOxk6fNv4LQeu4wElcIa7NRnQqSeWFo"
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.naver.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'kimsehoony@naver.com'  # ✅ 네 네이버 이메일 주소
+EMAIL_HOST_PASSWORD = 'MK5NR1FX6M4G'  # ✅ 앱 비밀번호 (일반 비번 아님!)
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
