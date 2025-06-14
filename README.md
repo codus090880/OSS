@@ -5,7 +5,7 @@ PRUNNERS는 러닝을 즐기는 사람들을 위한 실시간 러닝메이트 �
 
 ## 주요 기능
 
-- **실시간 러닝메이트 매칭**
+- **실시간 러닝 메이트 매칭**
   - 위치, 희망 거리, 성별 조건을 기반으로 자동 매칭
 - **즉석 매칭 시스템**
   - 사전 약속 없이 즉시 러닝 파트너 매칭 가능
@@ -40,10 +40,6 @@ PRUNNERS는 러닝을 즐기는 사람들을 위한 실시간 러닝메이트 �
 
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
 
-### Version Control
-
-![Git](https://img.shields.io/badge/Git-F05032?style=flat-square&logo=git&logoColor=white)
-![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=GitHub&logoColor=white)
 
 ### External API
 
