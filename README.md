@@ -1,6 +1,5 @@
-<img width="1009" alt="스크린샷 2025-06-15 오후 2 24 36" src="https://github.com/user-attachments/assets/f8a61599-6ff1-4281-b34c-6e840453e09f" /><img width="1009" alt="image" src="https://github.com/user-attachments/assets/fb4cef80-d345-4bcb-b27a-f6f2f058e8b9" />
+<img width="1009" alt="스크린샷 2025-06-15 오후 2 24 36" src="https://github.com/user-attachments/assets/f8a61599-6ff1-4281-b34c-6e840453e09f" />
 # PRUNNERS
-
 
 PRUNNERS는 러닝을 즐기는 사람들을 위한 실시간 러닝메이트 매칭 플랫폼입니다.  
 사용자의 위치, 일정 등을 고려하여 즉석에서 러닝 메이트를 찾아주고 함께 러닝을 즐길 수 있도록 지원합니다.
