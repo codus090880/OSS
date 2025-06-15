@@ -1,4 +1,3 @@
-<img width="1009" alt="스크린샷 2025-06-15 오후 2 24 36" src="https://github.com/user-attachments/assets/f8a61599-6ff1-4281-b34c-6e840453e09f" />
 # PRUNNERS
 
 PRUNNERS는 러닝을 즐기는 사람들을 위한 실시간 러닝메이트 매칭 플랫폼입니다.  
